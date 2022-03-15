@@ -23,7 +23,8 @@ MODEL = ['RT', 'RT_Lite','I','I_Lite', 'II','II_Lite', 'III', 'IV'][7]
 JOINT_ID = {0:"right_ankle", 1:"right_knee", 2: "right_hip", 3: "left_hip", 4: "left_knee", 5: "left_ankle", 6: "pelvis", 7:"thorax", 8:"upper_neck", 9:"head_top", 10:"right_wrist", 11:"right_elbow", 12:"right_shoulder", 13:"left_shoulder", 14:"left_elbow", 15: "left_wrist"}
 # VARIABILI
 annotations = None
-create_csv_model_infer = True
+create_csv_model_infer = False
+
 # FUNZIONI
 def get_rows_from_annotations(annotations, abs_ds_path):
     res = {}
@@ -108,4 +109,9 @@ if __name__ == "__main__":
     inference = get_rows_from_csv(ground_truth.keys(), abs_ds_path) #ground_truth.keys()
     inference = get_real_body_parts(inference, abs_ds_path)
 
-    print(utils.pckh(ground_truth, inference))
+    print("PCK:", utils.pckh(ground_truth, inference))
+    print("PCP:", utils.pcp(ground_truth, inference))
+    print("PDJ:", utils.pdj(ground_truth, inference))
+    print("AUC per PCK:", utils.auc(utils.pckh, ground_truth, inference, _max=1, visualize=True))
+    print("AUC per PCP:", utils.auc(utils.pcp, ground_truth, inference, _max=1, visualize=True))
+    print("AUC per PDJ:", utils.auc(utils.pdj, ground_truth, inference, _max=1, visualize=True))
