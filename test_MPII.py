@@ -105,21 +105,21 @@ def create_csv_model_inference(abs_ds_path, model):
     for file in list_of_file:
         os.system(f'python {EFFICIENTPOSE_MAIN} --model={model} --path="{file}" --store')
 
-def get_gt_and_inference(annotations, abs_ds_path):
-    ground_truth = get_rows_from_annotations(annotations, abs_ds_path)
+def get_inference(list_of_img, abs_ds_path):
     # alcune img non hanno il campo annopoints per cui tali img non verranno recuperate da inference
-    inference = get_rows_from_csv(ground_truth.keys(), abs_ds_path)
-    return ground_truth, get_real_body_parts(inference, abs_ds_path)
+    inference = get_rows_from_csv(list_of_img, abs_ds_path)
+    return get_real_body_parts(inference, abs_ds_path)
 
 def compare_models(annotations, abs_ds_path, metric_name, for_auc=False):
     metric = {'pck': utils.pckh, 'pcp':utils.pcp, 'pdj':utils.pdj}
     _min,_max,step = 0, 1, 0.01
     res = {}
+    ground_truth = get_rows_from_annotations(annotations, abs_ds_path)
     for m in MODELs:
         print("Lavoro su EfficientPose", m, "...\n")
 
         create_csv_model_inference(abs_ds_path, m)
-        gt, inference = get_gt_and_inference(annotations, abs_ds_path)
+        gt, inference = get_gt_and_inference(ground_truth.keys(), abs_ds_path)
         X = [i for i in np.arange(_min, _max, step)]
         if for_auc:
             Y = [utils.auc(metric[metric_name], gt, inference, _max=x) for x in X]
@@ -145,7 +145,8 @@ if __name__ == "__main__":
     
         # descrizione della struttura link: http://human-pose.mpi-inf.mpg.de/#downloa
 
-        ground_truth, inference = get_gt_and_inference(annotations, abs_ds_path)    
+        ground_truth = get_rows_from_annotations(annotations, abs_ds_path)
+        inference = get_inference(annotations, abs_ds_path)    
 
         print("PCK:", utils.pckh(ground_truth, inference))
         print("PCP:", utils.pcp(ground_truth, inference))

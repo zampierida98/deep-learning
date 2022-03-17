@@ -165,7 +165,7 @@ def auc(metric, ground_truth, inference, _min=0, _max=0.5, step=0.01, visualize=
     AUC = round(integrate.trapz(X, Y), 4)
 
     if visualize:
-        plot({model_name: (X,Y)}, "auc per" + metric.__name__)
+        plot({model_name: (X,Y)}, "auc per " + metric.__name__)
     return AUC
 
 def plot(dict_values, metric_name):
