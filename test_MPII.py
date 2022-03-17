@@ -19,15 +19,15 @@ warnings.simplefilter("ignore", FutureWarning)
 DS_PATH = './MPII/sub_dataset'
 EFFICIENTPOSE_PATH = './EfficientPose-master/'
 EFFICIENTPOSE_MAIN = 'track.py'
-MODELs = ['RT','I','II', 'III', 'IV']
+MODELs = ['III', 'IV'] #MODELs = ['RT','I','II', 'III', 'IV'] # MODELs = ['RT','I','II'] # MODELs = ['III', 'IV']
 JOINT_ID = {0:"right_ankle", 1:"right_knee", 2: "right_hip", 3: "left_hip", 4: "left_knee", 5: "left_ankle", 
             6: "pelvis", 7:"thorax", 8:"upper_neck", 9:"head_top", 10:"right_wrist", 11:"right_elbow", 
             12:"right_shoulder", 13:"left_shoulder", 14:"left_elbow", 15: "left_wrist"}
 # VARIABILI
-FRAMEWORK = "tf", #'tflite', 'keras' #"torch"
+FRAMEWORK = 'tflite' #, 'keras' #"torch"# "tf", #
 MODEL = MODELs[4]
 # True lavora su un solo modello (MODEL), False crea un plot che compara i diversi modelli
-one_or_more = True
+one_or_more = False
 # variabile usata quando one_or_more=True. Questa variabile dice se devono essere creati 
 # o meno i csv
 create_csv_model_infer = True
@@ -169,6 +169,7 @@ if __name__ == "__main__":
                 create_csv_model_inference(abs_ds_path, m)
                 move_csv_in_model_dir(abs_ds_path, m)
 
+        exit()
         compararison = compare_models(annotations, abs_ds_path, metric_name)
 
         for m in MODELs:
