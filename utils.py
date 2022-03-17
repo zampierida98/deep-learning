@@ -1,3 +1,4 @@
+from ssl import ALERT_DESCRIPTION_INSUFFICIENT_SECURITY
 import numpy as np
 import pickle
 from scipy import integrate
@@ -167,6 +168,12 @@ def auc(metric, ground_truth, inference, _min=0, _max=0.5, step=0.01, visualize=
     if visualize:
         plot({model_name: (X,Y)}, "auc per " + metric.__name__)
     return AUC
+
+def auc_2(X,Y, model_name, metric_name):
+    AUC = round(integrate.trapz(X, Y), 4)
+    plot({model_name: (X,Y)}, f"auc per {metric_name} = {AUC}")
+    return AUC
+
 
 def plot(dict_values, metric_name):
     '''

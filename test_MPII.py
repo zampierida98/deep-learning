@@ -24,10 +24,10 @@ JOINT_ID = {0:"right_ankle", 1:"right_knee", 2: "right_hip", 3: "left_hip", 4: "
             6: "pelvis", 7:"thorax", 8:"upper_neck", 9:"head_top", 10:"right_wrist", 11:"right_elbow", 
             12:"right_shoulder", 13:"left_shoulder", 14:"left_elbow", 15: "left_wrist"}
 # VARIABILI
-FRAMEWORK = "tf"    #tflite, keras, "torch" 
+FRAMEWORK = "torch" #"tf", #'tflite', 'keras'
 MODEL = MODELs[4]
 # True lavora su un solo modello (MODEL), False crea un plot che compara i diversi modelli
-one_or_more = False
+one_or_more = True
 # variabile usata quando one_or_more=True. Questa variabile dice se devono essere creati 
 # o meno i csv
 create_csv_model_infer = True
@@ -111,24 +111,21 @@ def get_inference(list_of_img, abs_ds_path, model):
     inference = get_rows_from_csv(list_of_img, abs_ds_path, model)
     return get_real_body_parts(inference, abs_ds_path)
 
-def compare_models(annotations, abs_ds_path, metric_name, for_auc=False):
-    metric = {'pck': utils.pckh, 'pcp':utils.pcp, 'pdj':utils.pdj}
+def compare_models(annotations, abs_ds_path, metric_name):
+    metric = {'pckh': utils.pckh, 'pcp':utils.pcp, 'pdj':utils.pdj}
     _min,_max,step = 0, 1, 0.01
     res = {}
     ground_truth = get_rows_from_annotations(annotations, abs_ds_path)
     for m in MODELs:
-        print("Lavoro su EfficientPose", m, "...\n")
+        print("Lavoro su EfficientPose", m, "...")
 
         inference = get_inference(ground_truth.keys(), abs_ds_path, m)
         X = [i for i in np.arange(_min, _max, step)]
-        if for_auc:
-            Y = [utils.auc(metric[metric_name], ground_truth, inference, _max=x) for x in X]
-        else:
-            Y = [metric[metric_name](ground_truth, inference, x) for x in X]
+        Y = [metric[metric_name](ground_truth, inference, x) for x in X]
         res[m] = (X,Y)
-        
-        print()
-    utils.plot(res, (metric_name if not for_auc else "auc per"+metric_name))
+
+    utils.plot(res, metric_name)
+    return res
 
 def move_csv_in_model_dir(abs_ds_path, model):
     # errore se la dir esiste già
@@ -158,7 +155,7 @@ if __name__ == "__main__":
         # descrizione della struttura link: http://human-pose.mpi-inf.mpg.de/#download
 
         ground_truth = get_rows_from_annotations(annotations, abs_ds_path)
-        inference = get_inference(annotations, abs_ds_path, MODEL)    
+        inference = get_inference(ground_truth.keys(), abs_ds_path, MODEL)    
 
         print("PCK:", utils.pckh(ground_truth, inference))
         print("PCP:", utils.pcp(ground_truth, inference))
@@ -172,4 +169,8 @@ if __name__ == "__main__":
                 create_csv_model_inference(abs_ds_path, m)
                 move_csv_in_model_dir(abs_ds_path, m)
 
-        compare_models(annotations, abs_ds_path, metric_name, for_auc=False)
+        compararison = compare_models(annotations, abs_ds_path, metric_name)
+
+        for m in MODELs:
+            utils.auc_2(compararison[m][0],compararison[m][1], m, metric_name)
+            
