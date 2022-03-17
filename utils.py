@@ -159,17 +159,27 @@ def pdj(ground_truth, inference, tau=0.5):
         res += correct_pred / counter
     return res / len(ground_truth)
 
-def auc(metric, ground_truth, inference, _min=0, _max=0.5, step=0.01, visualize=False):
+def auc(metric, ground_truth, inference, _min=0, _max=0.5, step=0.01, visualize=False, model_name=''):
     X = [i for i in np.arange(_min, _max, step)]
     Y = [metric(ground_truth, inference, x) for x in X]
     AUC = round(integrate.trapz(X, Y), 4)
 
     if visualize:
-        plt.plot(X,Y)
-        plt.xticks(rotation=90)
-        plt.title(f"AUC per la metrica {metric.__name__}".upper())
-        plt.show()
+        plot({model_name: (X,Y)}, "auc per" + metric.__name__)
     return AUC
+
+def plot(dict_values, metric_name):
+    '''
+    dict_values: è un dizionario la cui chiave è il nome del modello mentre il valore è la coppia (X,Y)
+    metric_name: nome della metrica usata per generare i numeri dentro Y
+    '''
+    _, ax = plt.subplots()
+    for model in dict_values:
+        ax.plot(dict_values[model][0], dict_values[model][1])
+    ax.legend(['EfficientPose '+model for model in dict_values])
+    plt.xticks(rotation=90)
+    plt.title(f"Metrica {metric_name}".upper())
+    plt.show()
 
 
 if __name__ == "__main__":

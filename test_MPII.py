@@ -19,11 +19,20 @@ warnings.simplefilter("ignore", FutureWarning)
 DS_PATH = './MPII/sub_dataset'
 EFFICIENTPOSE_PATH = './EfficientPose-master/'
 EFFICIENTPOSE_MAIN = 'track.py'
-MODEL = ['RT', 'RT_Lite','I','I_Lite', 'II','II_Lite', 'III', 'IV'][7]
-JOINT_ID = {0:"right_ankle", 1:"right_knee", 2: "right_hip", 3: "left_hip", 4: "left_knee", 5: "left_ankle", 6: "pelvis", 7:"thorax", 8:"upper_neck", 9:"head_top", 10:"right_wrist", 11:"right_elbow", 12:"right_shoulder", 13:"left_shoulder", 14:"left_elbow", 15: "left_wrist"}
+MODELs = ['RT', 'RT_Lite','I','I_Lite', 'II','II_Lite', 'III', 'IV']
+JOINT_ID = {0:"right_ankle", 1:"right_knee", 2: "right_hip", 3: "left_hip", 4: "left_knee", 5: "left_ankle", 
+            6: "pelvis", 7:"thorax", 8:"upper_neck", 9:"head_top", 10:"right_wrist", 11:"right_elbow", 
+            12:"right_shoulder", 13:"left_shoulder", 14:"left_elbow", 15: "left_wrist"}
 # VARIABILI
-annotations = None
+MODEL = MODELs[7]
+# True lavora su un solo modello (MODEL), False crea un plot che compara i diversi modelli
+one_or_more = True
+# variabile usata quando one_or_more=True. Questa variabile dice se devono essere creati 
+# o meno i csv
 create_csv_model_infer = False
+# variabile usata quando one_or_more=False. Questa variabile dice quale metrica impiegare
+# per la comparazione dei modelli
+metric_name = 'pckh'
 
 # FUNZIONI
 def get_rows_from_annotations(annotations, abs_ds_path):
@@ -79,39 +88,70 @@ def get_real_body_parts(inference, abs_ds_path):
 
     return inference
 
+def create_csv_model_inference(abs_ds_path, model):
+    list_of_file = []
+    # popolo list_of_file prendendo solo i file jpg
+    for file in os.listdir(abs_ds_path):
+        if not file.endswith(".csv"):
+            list_of_file.append(f'{abs_ds_path}\\{file}')
+    
+    # se il processo non si trova già in EFFICIENTPOSE_PATH viene fatto il cambio di directory
+    try:
+        os.chdir(EFFICIENTPOSE_PATH)
+    except:
+        pass
+
+    # per ogni file viene creato il csv
+    for file in list_of_file:
+        os.system(f'python {EFFICIENTPOSE_MAIN} --model={model} --path="{file}" --store')
+
+def get_gt_and_inference(annotations, abs_ds_path):
+    ground_truth = get_rows_from_annotations(annotations, abs_ds_path)
+    # alcune img non hanno il campo annopoints per cui tali img non verranno recuperate da inference
+    inference = get_rows_from_csv(ground_truth.keys(), abs_ds_path)
+    return ground_truth, get_real_body_parts(inference, abs_ds_path)
+
+def compare_models(annotations, abs_ds_path, metric_name, for_auc=False):
+    metric = {'pck': utils.pckh, 'pcp':utils.pcp, 'pdj':utils.pdj}
+    _min,_max,step = 0, 1, 0.01
+    res = {}
+    for m in MODELs:
+        print("Lavoro su EfficientPose", m, "...\n")
+
+        create_csv_model_inference(abs_ds_path, m)
+        gt, inference = get_gt_and_inference(annotations, abs_ds_path)
+        X = [i for i in np.arange(_min, _max, step)]
+        if for_auc:
+            Y = [utils.auc(metric[metric_name], gt, inference, _max=x) for x in X]
+        else:
+            Y = [metric[metric_name](gt, inference, x) for x in X]
+        res[m] = (X,Y)
+        
+        print()
+    utils.plot(res, (metric_name if not for_auc else "auc per"+metric_name))
+
 # MAIN
 if __name__ == "__main__":
     with open('annotations.pickle', 'rb') as fin:
         annotations = pickle.load(fin)
-    
+        
     # path assoluto della dir DS_PATH
     abs_ds_path = os.path.abspath(DS_PATH)    
 
     # vengono creati i csv se necessario
-    if create_csv_model_infer:
-        list_of_file = []
-        for file in os.listdir(abs_ds_path):
-            if not file.endswith(".csv"):
-                list_of_file.append(f'{abs_ds_path}\\{file}')
-                
-        os.chdir(EFFICIENTPOSE_PATH)
-
-        for file in list_of_file:
-            os.system(f'python {EFFICIENTPOSE_MAIN} --model={MODEL} --path="{file}" --store')
+    if one_or_more:
+        if create_csv_model_infer:
+            create_csv_model_inference(abs_ds_path, MODEL)
     
-    # descrizione della struttura link: http://human-pose.mpi-inf.mpg.de/#download
-    # Non per tutte le img abbiamo le predizioni.
-    # TODO: è da investigare su questo fatto
+        # descrizione della struttura link: http://human-pose.mpi-inf.mpg.de/#downloa
 
-    ground_truth = get_rows_from_annotations(annotations, abs_ds_path)
-    # alcune img non hanno il campo annopoints per cui tali img non verranno recuperate da inference
-    
-    inference = get_rows_from_csv(ground_truth.keys(), abs_ds_path) #ground_truth.keys()
-    inference = get_real_body_parts(inference, abs_ds_path)
+        ground_truth, inference = get_gt_and_inference(annotations, abs_ds_path)    
 
-    print("PCK:", utils.pckh(ground_truth, inference))
-    print("PCP:", utils.pcp(ground_truth, inference))
-    print("PDJ:", utils.pdj(ground_truth, inference))
-    print("AUC per PCK:", utils.auc(utils.pckh, ground_truth, inference, _max=1, visualize=True))
-    print("AUC per PCP:", utils.auc(utils.pcp, ground_truth, inference, _max=1, visualize=True))
-    print("AUC per PDJ:", utils.auc(utils.pdj, ground_truth, inference, _max=1, visualize=True))
+        print("PCK:", utils.pckh(ground_truth, inference))
+        print("PCP:", utils.pcp(ground_truth, inference))
+        print("PDJ:", utils.pdj(ground_truth, inference))
+        print("AUC per PCK:", utils.auc(utils.pckh, ground_truth, inference, _max=1, visualize=True, model_name=MODEL))
+        print("AUC per PCP:", utils.auc(utils.pcp, ground_truth, inference, _max=1, visualize=True, model_name=MODEL))
+        print("AUC per PDJ:", utils.auc(utils.pdj, ground_truth, inference, _max=1, visualize=True, model_name=MODEL))
+    else:
+        compare_models(annotations, abs_ds_path, metric_name, for_auc=False)
