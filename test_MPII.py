@@ -119,12 +119,12 @@ def compare_models(annotations, abs_ds_path, metric_name, for_auc=False):
         print("Lavoro su EfficientPose", m, "...\n")
 
         create_csv_model_inference(abs_ds_path, m)
-        gt, inference = get_gt_and_inference(ground_truth.keys(), abs_ds_path)
+        inference = get_inference(ground_truth.keys(), abs_ds_path)
         X = [i for i in np.arange(_min, _max, step)]
         if for_auc:
-            Y = [utils.auc(metric[metric_name], gt, inference, _max=x) for x in X]
+            Y = [utils.auc(metric[metric_name], ground_truth, inference, _max=x) for x in X]
         else:
-            Y = [metric[metric_name](gt, inference, x) for x in X]
+            Y = [metric[metric_name](ground_truth, inference, x) for x in X]
         res[m] = (X,Y)
         
         print()
