@@ -137,14 +137,14 @@ def pdj(ground_truth, inference, tau=0.5):
     for img in ground_truth:        
         counter = 0
         correct_pred = 0
-        torso_diag = max(distance(ground_truth[img]['right_shoulder'][0], ground_truth[img]['right_shoulder'][1], 
-                                  ground_truth[img]['left_hip'][0], ground_truth[img]['left_hip'][1]), 
-                        distance(ground_truth[img]['left_shoulder'][0], ground_truth[img]['left_shoulder'][1], 
-                                  ground_truth[img]['right_hip'][0], ground_truth[img]['right_hip'][1]))
-                                
-        for bp1, bp2 in segments:
-            # ci sono immagini in cui lo scheletro potrebbe essere parzialmente osservabile
-            try:
+        try:
+            torso_diag = max(distance(ground_truth[img]['right_shoulder'][0], ground_truth[img]['right_shoulder'][1], 
+                                      ground_truth[img]['left_hip'][0], ground_truth[img]['left_hip'][1]), 
+                            distance(ground_truth[img]['left_shoulder'][0], ground_truth[img]['left_shoulder'][1], 
+                                      ground_truth[img]['right_hip'][0], ground_truth[img]['right_hip'][1]))
+                                    
+            for bp1, bp2 in segments:
+                # ci sono immagini in cui lo scheletro potrebbe essere parzialmente osservabile
                 bp1x1, bp1y1 = inference[img][bp1]
                 bp2x1, bp2y1 = inference[img][bp2]
                 bp1x2, bp1y2 = ground_truth[img][bp1]
@@ -155,9 +155,11 @@ def pdj(ground_truth, inference, tau=0.5):
 
                     correct_pred += 1
                 counter += 1
-            except:
-                pass
-        res += correct_pred / counter
+            
+            res += correct_pred / counter
+        except:
+            pass
+        
     return res / len(ground_truth)
 
 def auc(metric, ground_truth, inference, _min=0, _max=0.5, step=0.01, visualize=False, model_name=''):
