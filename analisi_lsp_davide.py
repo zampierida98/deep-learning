@@ -7,9 +7,12 @@ L'insieme delle funzioni di supporto (ad es. metriche impiegate) viene scritto i
 # IMPORT
 import os
 import utils
+import numpy as np
 import warnings
+import matplotlib.pyplot as plt
 from itertools import groupby
 from PIL import Image
+from scipy import integrate
 warnings.simplefilter("ignore", FutureWarning)
 
 # COSTANTI
@@ -130,14 +133,16 @@ def pcp(ground_truth, inference, tau=0.5):
             except:
                 pass
         
+        #print(bp1, bp2, correct_pred, counter)
         # se il segmento non esiste non lo conto
         try:
-            res[(bp1, bp2)] = correct_pred / counter
+            res[(bp1, bp2)] = round(correct_pred / counter, 3) * 100
             res['total'] += correct_pred / counter
         except:
             pass
 
-    res['total'] /= (len(res.keys())-1)
+    res['total'] = round(res['total'] / (len(res.keys())-1), 3) * 100
+    
     return res
 
 def pdj(ground_truth, inference, tau=0.5):
@@ -166,14 +171,15 @@ def pdj(ground_truth, inference, tau=0.5):
             except:
                 pass
         
+        #print(bp1, bp2, correct_pred, counter)
         # se il segmento non esiste non lo conto
         try:
-            res[(bp1, bp2)] = correct_pred / counter
+            res[(bp1, bp2)] = round(correct_pred / counter, 3) * 100
             res['total'] += correct_pred / counter
         except:
             pass
     
-    res['total'] /= (len(res.keys())-1)
+    res['total'] = round(res['total'] / (len(res.keys())-1), 3) * 100
     return res
 
 def pck(ground_truth, inference, tau=0.5):
@@ -196,16 +202,30 @@ def pck(ground_truth, inference, tau=0.5):
                 counter += 1
             except:
                 pass
-            
+        
+        #print(p, correct_pred, counter)
         # se il keypoint non esiste non lo conto
         try:
-            res[p] = correct_pred / counter
+            res[p] = round(correct_pred / counter, 3) * 100
             res['total'] += correct_pred / counter
         except:
             pass
         
-    res['total'] /= (len(res.keys())-1)
+    res['total'] = round(res['total'] / (len(res.keys())-1), 3) * 100
     return res
+
+def auc(metric, ground_truth, inference):
+    X = [i for i in np.arange(0, 1, 0.01)]
+    Y = [metric(ground_truth, inference, x)['total']/100 for x in X]
+    AUC = round(integrate.trapz(Y,X), 3)
+    
+    _, ax = plt.subplots()
+    ax.plot(X, Y)
+    ax.legend(['EfficientPose '+MODEL])
+    plt.xticks(rotation=90)
+    plt.title(f"valore di auc per {metric.__name__} = {AUC}".upper())
+    plt.show()
+    return AUC
 
 def main_LSP():
     # path assoluto della dir DS_PATH
@@ -226,13 +246,16 @@ def main_LSP():
         
         # PCP totale e per Torso?,Upper Leg,Lower Leg,Upper Arm,Forearm,Head
         print("PCP:", pcp(ground_truth, inference))
+        print("AUC per PCP: ", auc(pcp, ground_truth, inference))
         print()
         
         print("PDJ:", pdj(ground_truth, inference))
+        print("AUC per PDJ: ", auc(pdj, ground_truth, inference))
         print()
         
         # PCK con d=torso (PER PELVIS?)
         print("PCK:", pck(ground_truth, inference))
+        print("AUC per PCK: ", auc(pck, ground_truth, inference))
         print()
 
     else:
@@ -257,5 +280,4 @@ def main_LSP():
 
 
 if __name__ == "__main__":
-    #main_MPII()
     main_LSP()
