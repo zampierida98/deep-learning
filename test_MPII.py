@@ -13,28 +13,6 @@ from itertools import groupby
 from PIL import Image
 warnings.simplefilter("ignore", FutureWarning)
 
-# COSTANTI
-# dataset path
-#DS_PATH = './MPII/images'
-DS_PATH = './MPII/sub_dataset'
-EFFICIENTPOSE_PATH = './EfficientPose-master/'
-EFFICIENTPOSE_MAIN = 'track.py'
-MODELs = ['RT','I','II', 'III', 'IV'] # MODELs = ['RT','I','II'] # MODELs = ['III', 'IV']
-JOINT_ID = {0:"right_ankle", 1:"right_knee", 2: "right_hip", 3: "left_hip", 4: "left_knee", 5: "left_ankle", 
-            6: "pelvis", 7:"thorax", 8:"upper_neck", 9:"head_top", 10:"right_wrist", 11:"right_elbow", 
-            12:"right_shoulder", 13:"left_shoulder", 14:"left_elbow", 15: "left_wrist"}
-# VARIABILI
-FRAMEWORK = 'tflite' #, 'keras' #"torch"# "tf", #
-MODEL = MODELs[4]
-# True lavora su un solo modello (MODEL), False crea un plot che compara i diversi modelli
-one_or_more = True
-# variabile usata quando one_or_more=True. Questa variabile dice se devono essere creati 
-# o meno i csv
-create_csv_model_infer = False
-# variabile usata quando one_or_more=False. Questa variabile dice quale metrica impiegare
-# per la comparazione dei modelli
-metric_name = 'pckh'
-
 # FUNZIONI
 def get_rows_from_annotations(annotations, abs_ds_path):
     res = {}
@@ -43,8 +21,7 @@ def get_rows_from_annotations(annotations, abs_ds_path):
             continue
         
         try:
-            row = annotations[name]
-            
+            row = annotations[name]    
             parts = {}
             parts['head_box'] = (row['annorect']['x1'],
                                  row['annorect']['y1'],
@@ -138,6 +115,28 @@ def move_csv_in_model_dir(abs_ds_path, model):
         if file.endswith(".csv"):
             os.replace(f'{abs_ds_path}\\{file}', f'{abs_ds_path}\\{model}\\{file}')
 
+# COSTANTI
+# Dataset path
+DS_PATH = './MPII/sub_dataset' #DS_PATH = './MPII/images'
+EFFICIENTPOSE_PATH = './EfficientPose-master/'
+EFFICIENTPOSE_MAIN = 'track.py'
+MODELs = ['RT','I','II', 'III', 'IV']
+JOINT_ID = {0:"right_ankle", 1:"right_knee", 2: "right_hip", 3: "left_hip", 4: "left_knee", 5: "left_ankle", 
+            6: "pelvis", 7:"thorax", 8:"upper_neck", 9:"head_top", 10:"right_wrist", 11:"right_elbow", 
+            12:"right_shoulder", 13:"left_shoulder", 14:"left_elbow", 15: "left_wrist"}
+
+# VARIABILI
+FRAMEWORK = 'tflite' #, 'keras' #"torch"# "tf", #
+MODEL = MODELs[4]
+# True lavora su un solo modello (MODEL), False crea un plot che compara i diversi modelli
+ANALYZE_ONE_MODEL = True
+# variabile usata quando ANALYZE_ONE_MODEL=True. Questa variabile dice se devono essere creati 
+# o meno i csv
+CREATE_CSV_INFERENCE = False
+# variabile usata quando ANALYZE_ONE_MODEL=False. Questa variabile dice quale metrica impiegare
+# per la comparazione dei modelli
+METRIC_NAME = 'pckh'
+
 # MAIN
 if __name__ == "__main__":
     with open('annotations.pickle', 'rb') as fin:
@@ -147,8 +146,8 @@ if __name__ == "__main__":
     abs_ds_path = os.path.abspath(DS_PATH)
 
     # vengono creati i csv se necessario
-    if one_or_more:
-        if create_csv_model_infer:
+    if ANALYZE_ONE_MODEL:
+        if CREATE_CSV_INFERENCE:
             create_csv_model_inference(abs_ds_path, MODEL)
             move_csv_in_model_dir(abs_ds_path, MODEL)
     
@@ -164,13 +163,13 @@ if __name__ == "__main__":
         print("AUC per PCP:", utils.auc(utils.pcp, ground_truth, inference, _max=1, visualize=True, model_name=MODEL))
         print("AUC per PDJ:", utils.auc(utils.pdj, ground_truth, inference, _max=1, visualize=True, model_name=MODEL))
     else:
-        if create_csv_model_infer:
+        if CREATE_CSV_INFERENCE:
             for m in MODELs:
                 create_csv_model_inference(abs_ds_path, m)
                 move_csv_in_model_dir(abs_ds_path, m)
 
-        compararison = compare_models(annotations, abs_ds_path, metric_name)
+        compararison = compare_models(annotations, abs_ds_path, METRIC_NAME)
 
         for m in MODELs:
-            utils.auc_2(compararison[m][0],compararison[m][1], m, metric_name)
+            utils.auc_sup(compararison[m][0],compararison[m][1], m, METRIC_NAME)
             

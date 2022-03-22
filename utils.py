@@ -1,4 +1,3 @@
-from ssl import ALERT_DESCRIPTION_INSUFFICIENT_SECURITY
 import numpy as np
 import pickle
 from scipy import integrate
@@ -7,66 +6,72 @@ import matplotlib.pyplot as plt
 
 # FUNZIONI
 def load_mat(filename):
-    """
-    This function should be called instead of direct scipy.io.loadmat
-    as it cures the problem of not properly recovering python dictionaries
-    from mat files. It calls the function check keys to cure all entries
-    which are still mat-objects
-    """
+    '''
+    Il metodo scipy.io.loadmat non genera una struttura dati basata su liste o dizionari.
+    Per cui ricorsivamente si guarda il tipo di struttura ottenuta da scipy.io.loadmat
+    e la si converte nelle strutture python corrispondenti partendo dal basso fino ad arrivare in cima.
+    '''
 
-    def _check_vars(d):
-        """
-        Checks if entries in dictionary are mat-objects. If yes
-        todict is called to change them to nested dictionaries
-        """
-        for key in d:
-            if isinstance(d[key], matlab.mio5_params.mat_struct):
-                d[key] = _todict(d[key])
-            elif isinstance(d[key], np.ndarray):
-                d[key] = _toarray(d[key])
-        return d
+    def inner_converter(obj):
+        '''
+        Esegue la chiamata alle funzioni ricorsive che creano obj python
+        '''
+        for k in obj:
+            if type(obj[k]) == matlab.mio5_params.mat_struct:
+                obj[k] = inner_todict(obj[k])
+            elif type(obj[k]) == np.ndarray:
+                obj[k] = inner_toarray(obj[k])
+        return obj
 
-    def _todict(matobj):
-        """
-        A recursive function which constructs from matobjects nested dictionaries
-        """
-        d = {}
-        for strg in matobj._fieldnames:
-            elem = matobj.__dict__[strg]
-            if isinstance(elem, matlab.mio5_params.mat_struct):
-                d[strg] = _todict(elem)
-            elif isinstance(elem, np.ndarray):
-                d[strg] = _toarray(elem)
+    def inner_todict(obj):
+        '''
+        inner_todict ricorsivamente trasforma i valori in oggetti python usando
+        un approccio simile alla funzione inner_converter
+        '''
+        res = {}
+        for k in obj._fieldnames: # per ogni campo
+            value = obj.__dict__[k] # prendiamo il valore del campo k
+            if type(value) == matlab.mio5_params.mat_struct:
+                res[k] = inner_todict(value)
+            elif type(value) == np.ndarray:
+                res[k] = inner_toarray(value)
             else:
-                d[strg] = elem
-        return d
+                res[k] = value
+        return res
 
-    def _toarray(ndarray):
-        """
-        A recursive function which constructs ndarray from cellarrays
-        (which are loaded as numpy ndarrays), recursing into the elements
-        if they contain matobjects.
-        """
-        if ndarray.dtype != 'float64':
-            elem_list = []
-            for sub_elem in ndarray:
-                if isinstance(sub_elem, matlab.mio5_params.mat_struct):
-                    elem_list.append(_todict(sub_elem))
-                elif isinstance(sub_elem, np.ndarray):
-                    elem_list.append(_toarray(sub_elem))
+    def inner_toarray(obj):
+        '''
+        Gli np.ndarray possono non essere semplici tensori su numeri
+        ma anche cellarrays (una sorta di liste al cui interno troviamo vari tipi di oggetti).
+        Per cui se è un cellarray (ndarray.dtype != 'float64') allora va applicato
+        la procedura nota di conversione.
+        '''
+        if obj.dtype != 'float64':
+            res = []
+            for el in obj:
+                if type(el) == matlab.mio5_params.mat_struct:
+                    res.append(inner_todict(el))
+                elif type(el) == np.ndarray:
+                    res.append(inner_toarray(el))
                 else:
-                    elem_list.append(sub_elem)
-            return np.array(elem_list)
+                    res.append(el)
+            return np.array(res)
         else:
-            return ndarray
+            return obj
 
-    data = loadmat(filename, struct_as_record=False, squeeze_me=True)
-    return _check_vars(data)
+    obj = loadmat(filename, struct_as_record=False, squeeze_me=True)
+    return inner_converter(obj)
 
 def distance(x1, y1, x2, y2):
+    '''
+    Distanza euclidea tra due punti bi-dimensionali
+    '''
     return ((x2-x1)**2 + (y2-y1)**2)**(1/2)
 
 def get_segments_16_parts():
+    '''
+    Ritorna la lista di coppie dove ciascune di esse rappresenta una parte di un arto.
+    '''
     return [('head_top', 'upper_neck'), ('upper_neck', 'thorax'), ('thorax', 'right_shoulder'), ('thorax', 'left_shoulder'), 
                 ('thorax', 'pelvis'), ('right_shoulder', 'right_elbow'), ('right_elbow', 'right_wrist'), ('left_shoulder', 'left_elbow'),
                 ('left_elbow', 'left_wrist'), ('pelvis', 'right_hip'), ('pelvis', 'left_hip'), ('right_hip', 'right_knee'), ('right_knee', 'right_ankle'), ('left_hip', 'left_knee'), ('left_knee', 'left_ankle')]
@@ -162,19 +167,16 @@ def pdj(ground_truth, inference, tau=0.5):
         
     return res / len(ground_truth)
 
+def auc_sup(X,Y, model_name, metric_name, visualize=True):
+    AUC = round(integrate.trapz(X, Y), 4)
+    if visualize:
+        plot({model_name: (X,Y)}, f"auc per {metric_name} = {AUC}")
+    return AUC
+
 def auc(metric, ground_truth, inference, _min=0, _max=0.5, step=0.01, visualize=False, model_name=''):
     X = [i for i in np.arange(_min, _max, step)]
     Y = [metric(ground_truth, inference, x) for x in X]
-    AUC = round(integrate.trapz(X, Y), 4)
-
-    if visualize:
-        plot({model_name: (X,Y)}, "auc per " + metric.__name__)
-    return AUC
-
-def auc_2(X,Y, model_name, metric_name):
-    AUC = round(integrate.trapz(X, Y), 4)
-    plot({model_name: (X,Y)}, f"auc per {metric_name} = {AUC}")
-    return AUC
+    return auc_sup(X,Y, model_name, metric.__name__)
 
 
 def plot(dict_values, metric_name):
