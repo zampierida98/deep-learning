@@ -2,7 +2,9 @@
 /MPII/images
 /LSP/images
 /LSP/batch
+/__pycache__
 */__pycache__
+*/desktop.ini
 
 COCO/annotations/captions_train2017.json
 COCO/annotations/captions_val2017.json
