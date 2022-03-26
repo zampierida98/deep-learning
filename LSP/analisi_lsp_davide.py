@@ -58,7 +58,7 @@ def get_real_body_parts(inference, abs_ds_path):
             new_y = float(inference[img][bp][1]) * height
             inference[img][bp] = (round(new_x), round(new_y))
         
-        # TODO: upper-neck!=thorax E QUINDI neck=punto medio tra upper-neck e thorax
+        # upper-neck!=thorax E QUINDI neck=punto medio tra upper-neck e thorax
         inference[img]['neck'] = (round((inference[img][JOINT_ID[7]][0]+inference[img][JOINT_ID[8]][0]) / 2),
                                   round((inference[img][JOINT_ID[7]][1]+inference[img][JOINT_ID[8]][1]) / 2))
         # TODO: pelvis = punto medio tra le anche? 1/9 E 0/9 CON RT
@@ -81,7 +81,8 @@ def load_LSP():
             #Right ankle,Right knee,Right hip,Left hip,Left knee,Left ankle,Right wrist,
             #Right elbow,Right shoulder,Left shoulder,Left elbow,Left wrist,Neck,Head top
             ann[JOINT_ID_LSP[kp]] = (round(joints[0][kp][img]), round(joints[1][kp][img]))
-        # TODO: pelvis = punto medio tra le anche? 1/9 E 0/9 CON RT
+        
+        # pelvis=punto medio tra le anche
         ann["pelvis"] = (round((ann[JOINT_ID_LSP[2]][0]+ann[JOINT_ID_LSP[3]][0]) / 2),
                          round((ann[JOINT_ID_LSP[2]][1]+ann[JOINT_ID_LSP[3]][1]) / 2))
         
@@ -142,6 +143,12 @@ def main_LSP():
             
             pck_values = utils.auc(utils.pck, ground_truth, inference)
             pcks[m] = pck_values
+            
+            print("Modello "+m)
+            print("AUC per PCP: ", pcp_values[2])
+            print("AUC per PDJ: ", pdj_values[2])
+            print("AUC per PCK: ", pck_values[2])
+            print()
 
         # grafici comparativi
         utils.plot(utils.pcp, pcps)

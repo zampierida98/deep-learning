@@ -185,18 +185,21 @@ def pck(ground_truth, inference, tau=0.5):
     res['total'] = round(res['total'] / (len(res.keys())-1), 3) * 100
     return res
 
-def auc(metric, ground_truth, inference):
-    X = [i for i in np.arange(0, 1, 0.01)]
+def auc(metric, ground_truth, inference, _min=0, _max=1, step=0.01):
+    X = [i for i in np.arange(_min, _max, step)]
     Y = [metric(ground_truth, inference, x)['total']/100 for x in X]
-    AUC = round(integrate.trapz(Y,X), 3)
+    AUC = integrate.trapz(Y,X)
+    AUC = round(AUC / (_max - _min), 3)  # normalizzazione
     return (X,Y,AUC)
 
 def plot(metric, values):
-    _, ax = plt.subplots()
+    _, ax = plt.subplots(figsize=(20, 10), dpi=60)
     for m in values:
         ax.plot(values[m][0], values[m][1])
 
     ax.legend(['EfficientPose '+m for m in values])
     plt.xticks(rotation=90)
     plt.title(f'comparazione dei valori per la metrica {metric.__name__}'.upper())
+    plt.ylabel(metric.__name__)
+    plt.xlabel('soglia')
     plt.show()
