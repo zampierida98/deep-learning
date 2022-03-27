@@ -15,7 +15,7 @@ MODEL = MODELS[4]
 
 # VARIABILI
 # True lavora su un solo modello (MODEL), False crea un plot che compara i diversi modelli
-ANALYZE_ONE_MODEL = True
+ANALYZE_ONE_MODEL = False
 
 # FUNZIONI
 def create_csv_model_inference(abs_ds_path, abs_res_path, model):
@@ -41,7 +41,7 @@ def create_csv_model_inference(abs_ds_path, abs_res_path, model):
         for file in list_of_file:
             os.system(f'python3.7 {EFFICIENTPOSE_MAIN} --model={model} --path="{file}" --store --framework={FRAMEWORK}')
 
-        # sposto i csv nella cartella dei risultati (la creo se non esiste)
+        # sposto i csv nella cartella dei risultati
         for file in os.listdir(dir_path):
             if os.path.isfile(os.path.join(dir_path,file)) and file.endswith(".csv"):
                 os.replace(f'{dir_path}/{file}', f'{abs_res_path}/{model}/{file}')

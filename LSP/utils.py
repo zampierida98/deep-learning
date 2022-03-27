@@ -78,6 +78,18 @@ def get_segments():
             ('right_hip', 'right_knee'), ('right_knee', 'right_ankle'),
             ('left_hip', 'left_knee'), ('left_knee', 'left_ankle')]
 
+def get_torso(gt_img):
+    bp1 = 'neck'
+    bp2 = 'pelvis'
+    bp1x, bp1y = gt_img[bp1]
+    bp2x, bp2y = gt_img[bp2]
+    return distance(bp1x, bp1y, bp2x, bp2y)
+
+    # return max(distance(gt_img['right_shoulder'][0], gt_img['right_shoulder'][1], 
+    #                     gt_img['left_hip'][0], gt_img['left_hip'][1]), 
+    #            distance(gt_img['left_shoulder'][0], gt_img['left_shoulder'][1], 
+    #                     gt_img['right_hip'][0], gt_img['right_hip'][1]))
+
 def pcp(ground_truth, inference, tau=0.5):
     segments = get_segments()
     res = {'total': 0}
@@ -120,10 +132,7 @@ def pdj(ground_truth, inference, tau=0.5):
         
         for img in ground_truth:
             try:
-                torso_diag = max(distance(ground_truth[img]['right_shoulder'][0], ground_truth[img]['right_shoulder'][1], 
-                                          ground_truth[img]['left_hip'][0], ground_truth[img]['left_hip'][1]), 
-                                distance(ground_truth[img]['left_shoulder'][0], ground_truth[img]['left_shoulder'][1], 
-                                          ground_truth[img]['right_hip'][0], ground_truth[img]['right_hip'][1]))
+                torso_diag = get_torso(ground_truth[img])
 
                 bp1x1, bp1y1 = inference[img][bp1]
                 bp2x1, bp2y1 = inference[img][bp2]
@@ -161,10 +170,7 @@ def pck(ground_truth, inference, tau=0.5):
         
         for img in ground_truth:
             try:
-                torso_diag = max(distance(ground_truth[img]['right_shoulder'][0], ground_truth[img]['right_shoulder'][1], 
-                                          ground_truth[img]['left_hip'][0], ground_truth[img]['left_hip'][1]), 
-                                distance(ground_truth[img]['left_shoulder'][0], ground_truth[img]['left_shoulder'][1], 
-                                          ground_truth[img]['right_hip'][0], ground_truth[img]['right_hip'][1]))
+                torso_diag = get_torso(ground_truth[img])
 
                 x1, y1 = inference[img][p]
                 x2, y2 = ground_truth[img][p]
