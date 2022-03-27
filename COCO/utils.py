@@ -75,37 +75,23 @@ def get_segments_16_parts():
                 ('thorax', 'pelvis'), ('right_shoulder', 'right_elbow'), ('right_elbow', 'right_wrist'), ('left_shoulder', 'left_elbow'),
                 ('left_elbow', 'left_wrist'), ('pelvis', 'right_hip'), ('pelvis', 'left_hip'), ('right_hip', 'right_knee'), ('right_knee', 'right_ankle'), ('left_hip', 'left_knee'), ('left_knee', 'left_ankle')]
 
-def pckh(ground_truth, inference, tau=0.5):
-    res = 0
-    for img in ground_truth:
-        head_box = ground_truth[img]['head_box']
-        d = distance(head_box[0],head_box[1],head_box[2],head_box[3])
-        l = 0.6 * d
-
-        correct_pred = 0
-        for p in inference[img]:
-            # ci sono immagini in cui lo scheletro potrebbe essere parzialmente osservabile
-            try:
-                x1, y1 = inference[img][p]
-                x2, y2 = ground_truth[img][p]
-                if distance(x1, y1, x2, y2) <= tau*l:
-                    correct_pred += 1
-            except:
-                pass
-        res += correct_pred / (len(ground_truth[img]) - 1) # il gt contiene anche il bounding box della testa
-    return res / len(ground_truth)
+def get_16_parts():
+    return ["right_ankle", "right_knee", "right_hip", "left_hip",
+            "left_knee", "left_ankle", "pelvis", "thorax",
+            "upper_neck", "head_top", "right_wrist", "right_elbow", 
+            "right_shoulder", "left_shoulder", "left_elbow", "left_wrist"]
 
 def pck(ground_truth, inference, tau=0.5):
     '''
     PCK basato sulla diagonale del torso
     '''
     res = 0
+    spec_res = {p:0 for p in get_16_parts()}
     for img in ground_truth:
         d = max(distance(ground_truth[img]['right_shoulder'][0], ground_truth[img]['right_shoulder'][1], 
                                   ground_truth[img]['left_hip'][0], ground_truth[img]['left_hip'][1]), 
                         distance(ground_truth[img]['left_shoulder'][0], ground_truth[img]['left_shoulder'][1], 
                                   ground_truth[img]['right_hip'][0], ground_truth[img]['right_hip'][1]))
-
         correct_pred = 0
         for p in inference[img]:
             # ci sono immagini in cui lo scheletro potrebbe essere parzialmente osservabile
@@ -114,10 +100,11 @@ def pck(ground_truth, inference, tau=0.5):
                 x2, y2 = ground_truth[img][p]
                 if distance(x1, y1, x2, y2) <= tau*d:
                     correct_pred += 1
+                    spec_res[p] += 1
             except:
                 pass
         res += correct_pred / (len(ground_truth[img]))
-    return res / len(ground_truth)
+    return res / len(ground_truth), {k:(spec_res[k] / len(ground_truth)) for k in spec_res}
 
 def pcp(ground_truth, inference, tau=0.5):
     '''
@@ -130,6 +117,8 @@ def pcp(ground_truth, inference, tau=0.5):
     '''
     segments = get_segments_16_parts()
     res = 0
+    spec_res = {(bp1, bp2):0 for bp1, bp2 in segments}
+
     for img in ground_truth:        
         counter = 0
         correct_pred = 0
@@ -142,13 +131,14 @@ def pcp(ground_truth, inference, tau=0.5):
                 bp2x2, bp2y2 = ground_truth[img][bp2]
                 if (distance(bp1x1, bp1y1, bp1x2, bp1y2) <= tau * distance(bp1x2, bp1y2, bp2x2, bp2y2) and 
                     distance(bp2x1, bp2y1, bp2x2, bp2y2) <= tau * distance(bp1x2, bp1y2, bp2x2, bp2y2)):
-
                     correct_pred += 1
+                    spec_res[(bp1, bp2)] += 1
+
                 counter += 1
             except:
                 pass
         res += correct_pred / counter
-    return res / len(ground_truth)
+    return res / len(ground_truth), {k:(spec_res[k] / len(ground_truth)) for k in spec_res}
 
 def pdj(ground_truth, inference, tau=0.5):
     '''
@@ -162,6 +152,8 @@ def pdj(ground_truth, inference, tau=0.5):
 
     segments = get_segments_16_parts()
     res = 0
+    spec_res = {(bp1, bp2):0 for bp1, bp2 in segments}
+    
     for img in ground_truth:        
         counter = 0
         correct_pred = 0
@@ -180,16 +172,17 @@ def pdj(ground_truth, inference, tau=0.5):
 
                 if (distance(bp1x1, bp1y1, bp1x2, bp1y2) <= tau * torso_diag and 
                     distance(bp2x1, bp2y1, bp2x2, bp2y2) <= tau * torso_diag):
-
                     correct_pred += 1
+                    spec_res[(bp1, bp2)] += 1
+
                 counter += 1
             except:
                 pass
         res += correct_pred / counter
-    return res / len(ground_truth)
+    return res / len(ground_truth), {k:(spec_res[k] / len(ground_truth)) for k in spec_res}
 
 def auc_sup(X,Y, model_name, metric_name, visualize=True):
-    AUC = round(integrate.trapz(X, Y), 4)
+    AUC = round(integrate.trapz(Y, X) / (X[-1] - X[0]), 4)
     if visualize:
         plot({model_name: (X,Y)}, f"auc per {metric_name} = {AUC}")
     return AUC
@@ -197,7 +190,9 @@ def auc_sup(X,Y, model_name, metric_name, visualize=True):
 def auc(metric, ground_truth, inference, _min=0, _max=0.5, step=0.01, visualize=False, model_name=''):
     X = [i for i in np.arange(_min, _max, step)]
     Y = [metric(ground_truth, inference, x) for x in X]
-    return auc_sup(X,Y, model_name, metric.__name__)
+    # recupero solo il valore della metrica
+    Y = [r1 for (r1,_) in Y]
+    return auc_sup(X,Y, model_name, metric.__name__, visualize)
 
 
 def plot(dict_values, metric_name):

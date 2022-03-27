@@ -77,7 +77,11 @@ def compare_models(annotations, abs_ds_path, metric_name, map_id_filename):
         inference = get_inference(ground_truth.keys(), abs_ds_path, m)
         X = [i for i in np.arange(_min, _max, step)]
         Y = [metric[metric_name](ground_truth, inference, x) for x in X]
+        # recupero solo il valore della metrica
+        Y = [r1 for (r1,_) in Y]
         res[m] = (X,Y)
+        # prettify per visualizzare dei risultati
+        prettify(metric[metric_name](ground_truth, inference, 0.5)[1], m, metric_name)
 
     utils.plot(res, metric_name)
     return res
@@ -153,7 +157,12 @@ def search_person_image(annotations, n_of_img, single_person=True):
             analyzed.add(obj['image_id'])
     
     return list(analyzed - removed)[0:n_of_img]
-    
+
+def prettify(_dict, model_name, metric_name):
+    print("#"*20, "MODEL " + model_name.upper(), metric_name.upper(), "#"*20)
+    for k in _dict:
+        print("\t", k, "\t\t", round(_dict[k]*100, 1), "%")
+    print("#"*54)
 
 # COSTANTI
 ANNOTATIONS_PATH = './annotations/person_keypoints_val2017.json'
@@ -206,9 +215,14 @@ if __name__ == "__main__":
         ground_truth = get_rows_from_annotations(annotations, map_id_filename)
         inference = get_inference(ground_truth.keys(), abs_ds_path, MODEL)    
         
-        print("PCK:", utils.pck(ground_truth, inference))
-        print("PCP:", utils.pcp(ground_truth, inference))
-        print("PDJ:", utils.pdj(ground_truth, inference))
+        # [0] per il recupero del solo valore della metrica
+        print("PCK:", utils.pck(ground_truth, inference)[0])
+        prettify(utils.pck(ground_truth, inference, 0.5)[1], MODEL, "pck")
+        print("PCP:", utils.pcp(ground_truth, inference)[0])
+        prettify(utils.pcp(ground_truth, inference, 0.5)[1], MODEL, "pcp")
+        print("PDJ:", utils.pdj(ground_truth, inference)[0])
+        prettify(utils.pdj(ground_truth, inference, 0.5)[1], MODEL, "pdj")
+
         print("AUC per PCK:", utils.auc(utils.pck, ground_truth, inference, _max=1, visualize=True, model_name=MODEL))
         print("AUC per PCP:", utils.auc(utils.pcp, ground_truth, inference, _max=1, visualize=True, model_name=MODEL))
         print("AUC per PDJ:", utils.auc(utils.pdj, ground_truth, inference, _max=1, visualize=True, model_name=MODEL))
