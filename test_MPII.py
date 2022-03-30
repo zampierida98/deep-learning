@@ -88,7 +88,7 @@ def get_inference(list_of_img, abs_ds_path, model):
     inference = get_rows_from_csv(list_of_img, abs_ds_path, model)
     return get_real_body_parts(inference, abs_ds_path)
 
-def compare_models(annotations, abs_ds_path, metric_name):
+def compare_models(annotations, abs_ds_path, metric_name, tau):
     metric = {'pckh': utils.pckh, 'pcp':utils.pcp, 'pdj':utils.pdj}
     _min,_max,step = 0, 1, 0.01
     res = {}
@@ -99,7 +99,11 @@ def compare_models(annotations, abs_ds_path, metric_name):
         inference = get_inference(ground_truth.keys(), abs_ds_path, m)
         X = [i for i in np.arange(_min, _max, step)]
         Y = [metric[metric_name](ground_truth, inference, x) for x in X]
+        # recupero solo il valore della metrica
+        Y = [r1 for (r1,_) in Y]
         res[m] = (X,Y)
+        # prettify per visualizzare dei risultati
+        prettify(metric[metric_name](ground_truth, inference, tau)[1], m, metric_name)
 
     utils.plot(res, metric_name)
     return res
@@ -114,6 +118,12 @@ def move_csv_in_model_dir(abs_ds_path, model):
     for file in os.listdir(abs_ds_path):
         if file.endswith(".csv"):
             os.replace(f'{abs_ds_path}\\{file}', f'{abs_ds_path}\\{model}\\{file}')
+            
+def prettify(_dict, model_name, metric_name):
+    print("#"*20, "MODEL " + model_name.upper(), metric_name.upper(), "#"*20)
+    for k in _dict:
+        print("\t", k, "\t\t", round(_dict[k]*100, 1), "%")
+    print("#"*54)
 
 # COSTANTI
 # Dataset path
@@ -129,13 +139,14 @@ JOINT_ID = {0:"right_ankle", 1:"right_knee", 2: "right_hip", 3: "left_hip", 4: "
 FRAMEWORK = 'tflite' #, 'keras' #"torch"# "tf", #
 MODEL = MODELs[4]
 # True lavora su un solo modello (MODEL), False crea un plot che compara i diversi modelli
-ANALYZE_ONE_MODEL = True
+ANALYZE_ONE_MODEL = False
 # variabile usata quando ANALYZE_ONE_MODEL=True. Questa variabile dice se devono essere creati 
 # o meno i csv
 CREATE_CSV_INFERENCE = False
 # variabile usata quando ANALYZE_ONE_MODEL=False. Questa variabile dice quale metrica impiegare
 # per la comparazione dei modelli
 METRIC_NAME = 'pckh'
+TAU_FOR_PRETTIFY = 0.5
 
 # MAIN
 if __name__ == "__main__":
@@ -155,21 +166,26 @@ if __name__ == "__main__":
 
         ground_truth = get_rows_from_annotations(annotations, abs_ds_path)
         inference = get_inference(ground_truth.keys(), abs_ds_path, MODEL)    
+        
+        # [0] per il recupero del solo valore della metrica
+        print("PCK:", utils.pckh(ground_truth, inference)[0])
+        prettify(utils.pckh(ground_truth, inference, TAU_FOR_PRETTIFY)[1], MODEL, "pckh")
+        print("PCP:", utils.pcp(ground_truth, inference)[0])
+        prettify(utils.pcp(ground_truth, inference, TAU_FOR_PRETTIFY)[1], MODEL, "pcp")
+        print("PDJ:", utils.pdj(ground_truth, inference)[0])
+        prettify(utils.pdj(ground_truth, inference, TAU_FOR_PRETTIFY)[1], MODEL, "pdj")
 
-        print("PCK:", utils.pckh(ground_truth, inference))
-        print("PCP:", utils.pcp(ground_truth, inference))
-        print("PDJ:", utils.pdj(ground_truth, inference))
-        print("AUC per PCK:", utils.auc(utils.pckh, ground_truth, inference, _max=1, visualize=True, model_name=MODEL))
+        print("AUC per PCKH:", utils.auc(utils.pckh, ground_truth, inference, _max=1, visualize=True, model_name=MODEL))
         print("AUC per PCP:", utils.auc(utils.pcp, ground_truth, inference, _max=1, visualize=True, model_name=MODEL))
         print("AUC per PDJ:", utils.auc(utils.pdj, ground_truth, inference, _max=1, visualize=True, model_name=MODEL))
+    
     else:
         if CREATE_CSV_INFERENCE:
             for m in MODELs:
                 create_csv_model_inference(abs_ds_path, m)
                 move_csv_in_model_dir(abs_ds_path, m)
 
-        compararison = compare_models(annotations, abs_ds_path, METRIC_NAME)
+        compararison = compare_models(annotations, abs_ds_path, METRIC_NAME, TAU_FOR_PRETTIFY)
 
         for m in MODELs:
             utils.auc_sup(compararison[m][0],compararison[m][1], m, METRIC_NAME)
-            
