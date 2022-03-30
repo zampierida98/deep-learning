@@ -87,24 +87,33 @@ def pck(ground_truth, inference, tau=0.5):
     '''
     res = 0
     spec_res = {p:0 for p in get_16_parts()}
+    spec_counter = {p:0 for p in get_16_parts()}
+
     for img in ground_truth:
         d = max(distance(ground_truth[img]['right_shoulder'][0], ground_truth[img]['right_shoulder'][1], 
                                   ground_truth[img]['left_hip'][0], ground_truth[img]['left_hip'][1]), 
                         distance(ground_truth[img]['left_shoulder'][0], ground_truth[img]['left_shoulder'][1], 
                                   ground_truth[img]['right_hip'][0], ground_truth[img]['right_hip'][1]))
         correct_pred = 0
+        counter = 0 # counter perché non tutte le immagini hanno 17 parti esatte
+
         for p in inference[img]:
             # ci sono immagini in cui lo scheletro potrebbe essere parzialmente osservabile
             try:
                 x1, y1 = inference[img][p]
                 x2, y2 = ground_truth[img][p]
+                if x2 == 0 and y2 == 0:
+                    continue
+                # incremento il counter
+                spec_counter[p] += 1
+                counter += 1
                 if distance(x1, y1, x2, y2) <= tau*d:
                     correct_pred += 1
                     spec_res[p] += 1
             except:
                 pass
-        res += correct_pred / (len(ground_truth[img]))
-    return res / len(ground_truth), {k:(spec_res[k] / len(ground_truth)) for k in spec_res}
+        res += correct_pred / counter
+    return res / len(ground_truth), {k:(spec_res[k] / spec_counter[k]) for k in spec_res}
 
 def pcp(ground_truth, inference, tau=0.5):
     '''
@@ -118,6 +127,7 @@ def pcp(ground_truth, inference, tau=0.5):
     segments = get_segments_16_parts()
     res = 0
     spec_res = {(bp1, bp2):0 for bp1, bp2 in segments}
+    spec_counter = {(bp1, bp2):0 for bp1, bp2 in segments}
 
     for img in ground_truth:        
         counter = 0
@@ -129,16 +139,23 @@ def pcp(ground_truth, inference, tau=0.5):
                 bp2x1, bp2y1 = inference[img][bp2]
                 bp1x2, bp1y2 = ground_truth[img][bp1]
                 bp2x2, bp2y2 = ground_truth[img][bp2]
+
+                # invalido l'arto se uno dei due keypoint non è annotato
+                if (bp1x2 == 0 and bp1y2 == 0) or (bp2x2 == 0 and bp2y2 == 0):
+                    continue
+
+                # incremento il counter
+                spec_counter[(bp1, bp2)] += 1
+                counter += 1
+
                 if (distance(bp1x1, bp1y1, bp1x2, bp1y2) <= tau * distance(bp1x2, bp1y2, bp2x2, bp2y2) and 
                     distance(bp2x1, bp2y1, bp2x2, bp2y2) <= tau * distance(bp1x2, bp1y2, bp2x2, bp2y2)):
                     correct_pred += 1
                     spec_res[(bp1, bp2)] += 1
-
-                counter += 1
             except:
                 pass
         res += correct_pred / counter
-    return res / len(ground_truth), {k:(spec_res[k] / len(ground_truth)) for k in spec_res}
+    return res / len(ground_truth), {k:(spec_res[k] / spec_counter[k]) for k in spec_res}
 
 def pdj(ground_truth, inference, tau=0.5):
     '''
@@ -153,7 +170,8 @@ def pdj(ground_truth, inference, tau=0.5):
     segments = get_segments_16_parts()
     res = 0
     spec_res = {(bp1, bp2):0 for bp1, bp2 in segments}
-    
+    spec_counter = {(bp1, bp2):0 for bp1, bp2 in segments}
+
     for img in ground_truth:        
         counter = 0
         correct_pred = 0
@@ -170,16 +188,23 @@ def pdj(ground_truth, inference, tau=0.5):
                 bp1x2, bp1y2 = ground_truth[img][bp1]
                 bp2x2, bp2y2 = ground_truth[img][bp2]
 
+                # invalido l'arto se uno dei due keypoint non è annotato
+                if (bp1x2 == 0 and bp1y2 == 0) or (bp2x2 == 0 and bp2y2 == 0):
+                    continue
+
+                # incremento il counter
+                spec_counter[(bp1, bp2)] += 1
+                counter += 1
+
                 if (distance(bp1x1, bp1y1, bp1x2, bp1y2) <= tau * torso_diag and 
                     distance(bp2x1, bp2y1, bp2x2, bp2y2) <= tau * torso_diag):
                     correct_pred += 1
                     spec_res[(bp1, bp2)] += 1
 
-                counter += 1
             except:
                 pass
         res += correct_pred / counter
-    return res / len(ground_truth), {k:(spec_res[k] / len(ground_truth)) for k in spec_res}
+    return res / len(ground_truth), {k:(spec_res[k] / spec_counter[k]) for k in spec_res}
 
 def auc_sup(X,Y, model_name, metric_name, visualize=True):
     AUC = round(integrate.trapz(Y, X) / (X[-1] - X[0]), 4)

@@ -1,8 +1,6 @@
 # IMPORT
 import os
 import numpy as np
-import skimage.io as io
-import matplotlib.pyplot as plt
 import utils
 
 from itertools import groupby
@@ -81,7 +79,7 @@ def compare_models(annotations, abs_ds_path, metric_name, map_id_filename):
         Y = [r1 for (r1,_) in Y]
         res[m] = (X,Y)
         # prettify per visualizzare dei risultati
-        prettify(metric[metric_name](ground_truth, inference, 0.5)[1], m, metric_name)
+        prettify(metric[metric_name](ground_truth, inference, TAU_FOR_PRETTIFY)[1], m, metric_name)
 
     utils.plot(res, metric_name)
     return res
@@ -108,31 +106,46 @@ def get_rows_from_annotations(annotations, map_id_filename):
         # si lavora da 15 in quanto è corrispondente ai valori di left_shoulder
         for i in range(15,len(obj['keypoints']),3):
             parts[body_part_ids[i // 3]] = (round(obj['keypoints'][i]), round(obj['keypoints'][i+1]))        
-        
+                
         # bacino è collocato a metà tra le due anche
-        parts['pelvis'] = ( round( (parts['left_hip'][0] + parts['right_hip'][0]) // 2),
-                            round( (parts['left_hip'][1] + parts['right_hip'][1]) // 2)
-                            )
+        if ((parts['left_hip'][0] == 0 and parts['left_hip'][1] == 0) or 
+            (parts['right_hip'][0] == 0 and parts['right_hip'][1] == 0)):
+            parts['pelvis'] = (0,0)
+        else:
+            parts['pelvis'] = ( round( (parts['left_hip'][0] + parts['right_hip'][0]) // 2),
+                                round( (parts['left_hip'][1] + parts['right_hip'][1]) // 2)
+                                )
         
         # il torace è un po' più in basso del valor medio tra i due 
-        parts['thorax'] = ( round( (parts['left_shoulder'][0] + parts['right_shoulder'][0]) // 2),
-                            round( (parts['left_shoulder'][1] + parts['right_shoulder'][1]) // 2)
-                            )
+        if ((parts['left_shoulder'][0] == 0 and parts['left_shoulder'][1] == 0) or 
+            (parts['right_shoulder'][0] == 0 and parts['right_shoulder'][1] == 0)):
+            parts['thorax'] = (0,0)
+        else:
+            parts['thorax'] = ( round( (parts['left_shoulder'][0] + parts['right_shoulder'][0]) // 2),
+                                round( (parts['left_shoulder'][1] + parts['right_shoulder'][1]) // 2)
+                                )
         
         # distanza sulla x tra i due occhi è circa uguale alla distanza centro_tra_i_due_occhi e la parte_superiore_testa
+        if ((obj['keypoints'][3] == 0 and obj['keypoints'][4] == 0) or
+            (obj['keypoints'][6] == 0 and obj['keypoints'][7] == 0) or
+            (obj['keypoints'][0] == 0 and obj['keypoints'][1] == 1)):
+            parts['head_top'] = (0,0)
+        else:
+            parts['head_top'] = (round( (obj['keypoints'][3] + obj['keypoints'][6]) // 2),
+                                round( (obj['keypoints'][4] + obj['keypoints'][7]) // 2)
+                                )
+            distanza_occhi = abs(round(obj['keypoints'][6] - obj['keypoints'][3]))
         
-        parts['head_top'] = (round( (obj['keypoints'][3] + obj['keypoints'][6]) // 2),
-                            round( (obj['keypoints'][4] + obj['keypoints'][7]) // 2)
-                            )
-        distanza_occhi = abs(round(obj['keypoints'][6] - obj['keypoints'][3]))
-        
-        parts['head_top'] = (parts['head_top'][0] - distanza_occhi, parts['head_top'][1])        
+            parts['head_top'] = (parts['head_top'][0] - distanza_occhi, parts['head_top'][1])        
 
         # upper_neck è collocato a metà tra naso e torace
-        '''
-        parts['upper_neck'] = ( round( (obj['keypoints'][0] + parts['thorax'][0]) // 2),
-                            round( (obj['keypoints'][1] + parts['thorax'][1]) // 2)
-                            )'''
+        if ((parts['thorax'][0] == 0 and parts['thorax'][1] == 0) or 
+            (obj['keypoints'][0] == 0 and obj['keypoints'][1] == 1)):
+            parts['thorax'] = (0,0)
+        else:
+            parts['upper_neck'] = ( round( (obj['keypoints'][0] + parts['thorax'][0]) // 2),
+                                round( (obj['keypoints'][1] + parts['thorax'][1]) // 2)
+                                )
         
         res[map_id_filename[ obj['image_id'] ] ] = parts
 
@@ -145,7 +158,7 @@ def search_person_image(annotations, n_of_img, single_person=True):
     analyzed = set()
     removed  = set()
     for obj in annotations:
-        if obj['num_keypoints'] != 17:
+        if obj['num_keypoints'] < 16:
             removed.add(obj['image_id'])
             continue
         if obj['image_id'] in analyzed:
@@ -174,7 +187,8 @@ MODELs = ['RT','I','II', 'III', 'IV']
 # VARIABILI
 FRAMEWORK = 'tflite' #, 'keras' #"torch"# "tf", #
 MODEL = MODELs[0]
-NUMBER_OF_IMAGES = 100
+NUMBER_OF_IMAGES = 200
+TAU_FOR_PRETTIFY = 0.5
 
 DOWNLOAD_IMAGES = False
 SINGLE_PERSON = False
@@ -186,7 +200,7 @@ ANALYZE_ONE_MODEL = False
 CREATE_CSV_INFERENCE = False
 # variabile usata quando ANALYZE_ONE_MODEL=False. Questa variabile dice quale metrica impiegare
 # per la comparazione dei modelli
-METRIC_NAME = 'pck'
+METRIC_NAME = 'pdj'
 
 # MAIN
 if __name__ == "__main__":
@@ -217,11 +231,11 @@ if __name__ == "__main__":
         
         # [0] per il recupero del solo valore della metrica
         print("PCK:", utils.pck(ground_truth, inference)[0])
-        prettify(utils.pck(ground_truth, inference, 0.5)[1], MODEL, "pck")
+        prettify(utils.pck(ground_truth, inference, TAU_FOR_PRETTIFY)[1], MODEL, "pck")
         print("PCP:", utils.pcp(ground_truth, inference)[0])
-        prettify(utils.pcp(ground_truth, inference, 0.5)[1], MODEL, "pcp")
+        prettify(utils.pcp(ground_truth, inference, TAU_FOR_PRETTIFY)[1], MODEL, "pcp")
         print("PDJ:", utils.pdj(ground_truth, inference)[0])
-        prettify(utils.pdj(ground_truth, inference, 0.5)[1], MODEL, "pdj")
+        prettify(utils.pdj(ground_truth, inference, TAU_FOR_PRETTIFY)[1], MODEL, "pdj")
 
         print("AUC per PCK:", utils.auc(utils.pck, ground_truth, inference, _max=1, visualize=True, model_name=MODEL))
         print("AUC per PCP:", utils.auc(utils.pcp, ground_truth, inference, _max=1, visualize=True, model_name=MODEL))
