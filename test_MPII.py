@@ -103,6 +103,7 @@ def compare_models(annotations, abs_ds_path, metric_name, tau):
         Y = [r1 for (r1,_) in Y]
         res[m] = (X,Y)
         # prettify per visualizzare dei risultati
+        #print(metric_name, tau, ":", round(metric[metric_name](ground_truth, inference, tau)[0]*100, 2))
         prettify(metric[metric_name](ground_truth, inference, tau)[1], m, metric_name)
 
     utils.plot(res, metric_name)
