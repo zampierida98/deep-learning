@@ -34,7 +34,7 @@ MODEL = MODELs[0]
 ANALYZE_ONE_MODEL = True
 
 VIDEO_FILENAME = '/gveii.mp4'
-VIDEO_ANALYSIS_FILENAME = 'gveii_visualize.mp4'
+VIDEO_ANALYSIS_FILENAME = 'gveii_tracked.mp4'
 
 
 # MAIN
