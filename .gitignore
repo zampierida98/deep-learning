@@ -13,3 +13,5 @@ COCO/annotations/instances_train2017.json
 COCO/annotations/instances_val2017.json
 COCO/annotations/person_keypoints_train2017.json
 COCO/dataset/*.jpg
+
+TEST_QUALITATIVO/dataset/gveii_tracked.mp4
