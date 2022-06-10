@@ -16,3 +16,15 @@ COCO/annotations/person_keypoints_train2017.json
 COCO/dataset/*.jpg
 
 TEST_QUALITATIVO/dataset/gveii_tracked.mp4
+deep-high-resolution-net.pytorch-master.zip
+HRNet-Human-Pose-Estimation-master.zip
+HRNet-master/pytorch/imagenet/resnet101-5d3b4d8f.pth
+HRNet-master/pytorch/imagenet/resnet152-b121ed2d.pth
+HRNet-master/pytorch/pose_coco/pose_hrnet_w32_256x192.pth
+HRNet-master/pytorch/pose_coco/pose_resnet_152_256x192.pth
+HRNet-master/pytorch/pose_coco/pose_resnet_152_384x288.pth
+HRNet-master/pytorch/pose_mpii/pose_resnet_101_256x256.pth
+HRNet-master/pytorch/pose_mpii/pose_resnet_152_256x256.pth
+HRNet/COCO/__pycache__/coco.cpython-37.pyc
+HRNet/COCO/__pycache__/utils.cpython-37.pyc
+pytorch-20220609T075653Z-002.zip
