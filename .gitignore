@@ -3,6 +3,7 @@
 /MPII/valid
 /LSP/images
 /LSP/batch
+/HRNet/MPII/results
 /__pycache__
 */__pycache__
 */desktop.ini
