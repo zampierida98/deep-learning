@@ -4,6 +4,7 @@
 /LSP/images
 /LSP/batch
 /HRNet/MPII/results
+/HRNet/MPII/__pycache__
 /__pycache__
 */__pycache__
 */desktop.ini
