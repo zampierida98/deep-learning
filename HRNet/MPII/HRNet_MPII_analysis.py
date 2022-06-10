@@ -9,7 +9,7 @@ from PIL import Image
 warnings.simplefilter("ignore", FutureWarning)
 
 # COSTANTI
-CSV_PATH = './results'
+IMAGES_PATH = '../../MPII/valid'  #'./results'
 MODELS = ['RT','I','II','III','IV']
 FRAMEWORK = 'pytorch'
 MODEL = MODELS[0]
@@ -20,7 +20,7 @@ JOINT_ID = {0:"right_ankle", 1:"right_knee", 2:"right_hip", 3:"left_hip",
 
 # VARIABILI
 # True lavora su un solo modello (MODEL), False crea un plot che compara i diversi modelli
-ANALYZE_ONE_MODEL = False
+ANALYZE_ONE_MODEL = True
 
 
 # FUNZIONI PER EFFICIENT POSE
@@ -62,12 +62,36 @@ def get_inference(list_of_img, abs_ds_path, model):
     inference = get_rows_from_csv(list_of_img, abs_ds_path, model)
     return get_real_body_parts(inference, abs_ds_path)
 
+def get_all_model_inference(list_of_img, abs_ds_path, model):
+    res = {}
+    with open(f'./valid_coordinates_{model}.csv', 'r') as fin:
+        header = fin.readline().strip()
+        header = header.replace("_x", ":x")
+        header = header.replace("_y", ":y")
+
+        frames = len(list_of_img)
+        for f in range(1,frames+1):
+            value = fin.readline().strip()
+            body_parts = list(zip(header.split(","), value.split(",")))
+            body_parts.sort(key=lambda x: x[0])
+            parts = {}
+            for p in [list(i) for j, i in groupby(body_parts, lambda x: x[0].split(':')[0])]:
+                # ignoro il primo valore della riga (frame)
+                if p[0][0] == 'frame':
+                    continue
+                
+                # p = [[parte_corpo_x, val_x], [parte_corpo_y, val_y]]
+                parts[p[0][0].split(":")[0]] = (p[0][1], p[1][1])
+                res[list_of_img[f-1]] = parts
+
+    return get_real_body_parts(res, abs_ds_path)
+
 # FUNZIONI PER HRNET
 def load_HRNet_preds():
     mat = utils.load_mat('./pred.mat')
     joints = mat['preds']  # 2958x16x2
 
-    f = open("img_names.log", "r")
+    f = open("./img_names.log", "r")
     lines = f.readlines()
     for i in range(len(lines)):
         lines[i] = lines[i].strip()
@@ -104,54 +128,56 @@ def get_rows_from_annotations(annotations, images):
 
 
 # MAIN
-def main():
-    # path assoluto della cartella CSV_PATH
-    abs_ds_path = os.path.abspath(CSV_PATH)
+def analyze(ground_truth, inference):
+    print("PCP:", utils.pcp(ground_truth, inference))
+    pcp_values = utils.auc(utils.pcp, ground_truth, inference)
+    print("AUC per PCP: ", pcp_values[2])
+    print()
+    
+    print("PDJ:", utils.pdj(ground_truth, inference))
+    pdj_values = utils.auc(utils.pdj, ground_truth, inference)
+    print("AUC per PDJ: ", pdj_values[2])
+    print()
+    
+    # PCK con d=torso (PER PELVIS?)
+    print("PCK:", utils.pck(ground_truth, inference))
+    pck_values = utils.auc(utils.pck, ground_truth, inference)
+    print("AUC per PCK: ", pck_values[2])
+    print()
+    
+    # grafici comparativi
+    utils.plot(utils.pcp, {MODEL: pcp_values})
+    utils.plot(utils.pdj, {MODEL: pdj_values})
+    utils.plot(utils.pck, {MODEL: pck_values})
 
-    # predizioni di HRNet
-    predictions = load_HRNet_preds()
+def main():
+    # path assoluto della cartella IMAGES_PATH
+    abs_ds_path = os.path.abspath(IMAGES_PATH)
 
     # lista con i nomi delle immagini per get_inference
     images = [ f for f in os.listdir(abs_ds_path) if os.path.isfile(os.path.join(abs_ds_path,f)) ]
-    images = set(images) & set(predictions.keys())
+    #images = set(images) & set(predictions.keys())
 
     # sottoinsieme delle predizioni
-    sub_pred = {}
-    for name in images:
-        sub_pred[name] = predictions[name]
-        
+    # sub_pred = {}
+    # for name in images:
+    #     sub_pred[name] = predictions[name]
+
     # annotazioni di MPII
     with open('../../annotations.pickle', 'rb') as fin:
         annotations = pickle.load(fin)
-
     ground_truth = get_rows_from_annotations(annotations, images)
-
-    return 0
+    
+    # predizioni di HRNet
+    inference = load_HRNet_preds()
+    analyze(ground_truth, inference)
+    
 
     if ANALYZE_ONE_MODEL:
-        inference = get_inference(images, abs_ds_path, MODEL)
-        
-        # PCP totale e per Torso?,Upper Leg,Lower Leg,Upper Arm,Forearm,Head
-        print("PCP:", utils.pcp(ground_truth, inference))
-        pcp_values = utils.auc(utils.pcp, ground_truth, inference)
-        print("AUC per PCP: ", pcp_values[2])
-        print()
-        
-        print("PDJ:", utils.pdj(ground_truth, inference))
-        pdj_values = utils.auc(utils.pdj, ground_truth, inference)
-        print("AUC per PDJ: ", pdj_values[2])
-        print()
-        
-        # PCK con d=torso (PER PELVIS?)
-        print("PCK:", utils.pck(ground_truth, inference))
-        pck_values = utils.auc(utils.pck, ground_truth, inference)
-        print("AUC per PCK: ", pck_values[2])
-        print()
-        
-        # grafici comparativi
-        utils.plot(utils.pcp, {MODEL: pcp_values})
-        utils.plot(utils.pdj, {MODEL: pdj_values})
-        utils.plot(utils.pck, {MODEL: pck_values})
+        # predizioni di EfficientPose
+        #inference = get_inference(images, abs_ds_path, MODEL)
+        inference = get_all_model_inference(images, abs_ds_path, MODEL)
+        analyze(ground_truth, inference)
 
     else:
         pcps = {}
