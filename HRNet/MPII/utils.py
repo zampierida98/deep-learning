@@ -185,6 +185,39 @@ def pck(ground_truth, inference, tau=0.5):
     res['total'] = round(res['total'] / (len(res.keys())-1), 3) * 100
     return res
 
+def pckh(ground_truth, inference, tau=0.5):
+    joints = get_16_parts()
+    
+    res = {'total': 0}
+    for k, p in joints.items():
+        counter = 0  # ci sono immagini in cui lo scheletro potrebbe essere parzialmente osservabile
+        correct_pred = 0
+        
+        for img in ground_truth:
+            try:
+                head_box = ground_truth[img]['head_box']
+                d = distance(head_box[0],head_box[1],head_box[2],head_box[3])
+                l = 0.6 * d
+                
+                x1, y1 = inference[img][p]
+                x2, y2 = ground_truth[img][p]
+                if distance(x1, y1, x2, y2) <= tau*l:
+                    correct_pred += 1
+                counter += 1
+            except:
+                pass
+        
+        #print(p, correct_pred, counter)
+        # se il keypoint non esiste non lo conto
+        try:
+            res[p] = round(correct_pred / counter, 3) * 100
+            res['total'] += correct_pred / counter
+        except:
+            pass
+        
+    res['total'] = round(res['total'] / (len(res.keys())-1), 3) * 100
+    return res
+
 def auc(metric, ground_truth, inference, _min=0, _max=1, step=0.01):
     X = [i for i in np.arange(_min, _max, step)]
     Y = [metric(ground_truth, inference, x)['total']/100 for x in X]
@@ -197,7 +230,7 @@ def plot(metric, values):
     for m in values:
         ax.plot(values[m][0], values[m][1])
 
-    ax.legend(['EfficientPose '+m for m in values])
+    ax.legend([m for m in values])
     plt.xticks(rotation=90)
     plt.title(f'comparazione dei valori per la metrica {metric.__name__}'.upper())
     plt.ylabel(metric.__name__)
@@ -208,11 +241,12 @@ def plot(metric, values):
 if __name__ == "__main__":
     import pickle
     mat = load_mat('annotations.mat')
-    
-    train_test_imgs = mat['RELEASE']['img_train']  # 0=test, 1=train
+
+    #train_test_imgs = mat['RELEASE']['img_train']  # 0=test, 1=train
     annotations = {}
-    for i in range(len(train_test_imgs)):
-        if train_test_imgs[i] == 1 and type(mat['RELEASE']['annolist'][i]['annorect']) == dict:
+    for i in range(len(mat['RELEASE']['img_train'])):
+        #train_test_imgs[i] == 1 and 
+        if type(mat['RELEASE']['annolist'][i]['annorect']) == dict:  # single person
             annotations[mat['RELEASE']['annolist'][i]['image']['name']] = mat['RELEASE']['annolist'][i]
 
     with open("annotations.pickle", 'wb') as fout:  # Overwrites any existing file.

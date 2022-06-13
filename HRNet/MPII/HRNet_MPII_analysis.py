@@ -12,15 +12,12 @@ warnings.simplefilter("ignore", FutureWarning)
 IMAGES_PATH = '../../MPII/valid'  #'./results'
 MODELS = ['RT','I','II','III','IV']
 FRAMEWORK = 'pytorch'
-MODEL = MODELS[0]
+MODEL = 'HRNet-W32'  #MODELS[0]
+ANALYZE_ONE_MODEL = False
 JOINT_ID = {0:"right_ankle", 1:"right_knee", 2:"right_hip", 3:"left_hip",
             4:"left_knee", 5:"left_ankle", 6:"pelvis", 7:"thorax",
             8:"upper_neck", 9:"head_top", 10:"right_wrist", 11:"right_elbow", 
             12:"right_shoulder", 13:"left_shoulder", 14:"left_elbow", 15: "left_wrist"}
-
-# VARIABILI
-# True lavora su un solo modello (MODEL), False crea un plot che compara i diversi modelli
-ANALYZE_ONE_MODEL = True
 
 
 # FUNZIONI PER EFFICIENT POSE
@@ -139,16 +136,21 @@ def analyze(ground_truth, inference):
     print("AUC per PDJ: ", pdj_values[2])
     print()
     
-    # PCK con d=torso (PER PELVIS?)
     print("PCK:", utils.pck(ground_truth, inference))
     pck_values = utils.auc(utils.pck, ground_truth, inference)
     print("AUC per PCK: ", pck_values[2])
+    print()
+    
+    print("PCKh:", utils.pckh(ground_truth, inference, tau=0.5))
+    pckh_values = utils.auc(utils.pckh, ground_truth, inference)
+    print("AUC per PCKh: ", pckh_values[2])
     print()
     
     # grafici comparativi
     utils.plot(utils.pcp, {MODEL: pcp_values})
     utils.plot(utils.pdj, {MODEL: pdj_values})
     utils.plot(utils.pck, {MODEL: pck_values})
+    utils.plot(utils.pckh, {MODEL: pckh_values})
 
 def main():
     # path assoluto della cartella IMAGES_PATH
@@ -167,45 +169,16 @@ def main():
     with open('../../annotations.pickle', 'rb') as fin:
         annotations = pickle.load(fin)
     ground_truth = get_rows_from_annotations(annotations, images)
-    
+
     # predizioni di HRNet
     inference = load_HRNet_preds()
     analyze(ground_truth, inference)
-    
 
     if ANALYZE_ONE_MODEL:
         # predizioni di EfficientPose
         #inference = get_inference(images, abs_ds_path, MODEL)
         inference = get_all_model_inference(images, abs_ds_path, MODEL)
         analyze(ground_truth, inference)
-
-    else:
-        pcps = {}
-        pdjs = {}
-        pcks = {}
-        for m in MODELS:
-            inference = get_inference(images, abs_ds_path, m)
-            
-            pcp_values = utils.auc(utils.pcp, ground_truth, inference)
-            pcps[m] = pcp_values
-            
-            pdj_values = utils.auc(utils.pdj, ground_truth, inference)
-            pdjs[m] = pdj_values
-            
-            pck_values = utils.auc(utils.pck, ground_truth, inference)
-            pcks[m] = pck_values
-            
-            print("Modello "+m)
-            print("AUC per PCP: ", pcp_values[2])
-            print("AUC per PDJ: ", pdj_values[2])
-            print("AUC per PCK: ", pck_values[2])
-            print()
-
-        # grafici comparativi
-        utils.plot(utils.pcp, pcps)
-        utils.plot(utils.pdj, pdjs)
-        utils.plot(utils.pck, pcks)
-
 
 if __name__ == "__main__":
     main()
