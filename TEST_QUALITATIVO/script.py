@@ -29,12 +29,12 @@ MODELs = ['RT','I','II', 'III', 'IV']
 
 # VARIABILI
 FRAMEWORK = 'tflite' #, 'keras' #"torch"# "tf", #
-MODEL = MODELs[0]
+MODEL = MODELs[2]
 # True lavora su un solo modello (MODEL), False crea un plot che compara i diversi modelli
 ANALYZE_ONE_MODEL = True
 
-VIDEO_FILENAME = '/gveii.mp4'
-VIDEO_ANALYSIS_FILENAME = 'gveii_tracked.mp4'
+VIDEO_FILENAME = '/test2.mp4'
+VIDEO_ANALYSIS_FILENAME = 'test2_tracked.mp4'
 
 
 # MAIN
