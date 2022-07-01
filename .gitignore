@@ -6,6 +6,8 @@
 /LSP/batch
 /HRNet/MPII/results
 /HRNet/MPII/__pycache__
+/DETECTOR/DATASET
+/DETECTOR/results
 /__pycache__
 */__pycache__
 */desktop.ini
