@@ -111,6 +111,27 @@ def extract_people_in_images(detections):
     
     crop(people)
 
+def extract_people_in_videos(detections):
+    '''
+    Prende come input le detection fatte da 'video_detection()'. Poi per ogni frame determina le bounding box
+    di tutte le persone nell'immagine. Applica infine crop che ritaglia dall'immagine la persona con il
+    grado di confidenza più alto.
+
+    '''
+    # DETECTIONS: dizionario della forma - (video: {frame:crop_persona_con_piu_alta_confidenza})
+    people = {}
+
+    for video in detections:
+        for frame in video.keys():
+            # predictions (pandas)
+            bbox = detections[video][frame].pandas().xyxy[0]  # xyxy=diagonale
+            
+            # vengono considerate solo le persone all'interno dell'immagine
+            people[frame] = bbox.loc[bbox['name'] == 'person']
+
+        # qua bisogna capire come fare
+        video_crop(people)
+
 def crop(people):
     for img in people.keys():
         # VIENE CONSIDERATA UNA SOLA PERSONA (PER ADESSO). QUELLA CHE HA LA CONFIDENZA PIU' ALTA
@@ -124,6 +145,11 @@ def crop(people):
                                         people[img].iloc[0]['ymax']))
         
         cropped_image.save(os.path.join(os.path.abspath(DS_PATH), CROPPED_IMAGES_TAG+img))
+
+def video_crop(people):
+    for img in people.keys():
+        # VIENE CONSIDERATA UNA SOLA PERSONA (PER ADESSO). QUELLA CHE HA LA CONFIDENZA PIU' ALTA
+        people[img] = people[img].loc[people[img]['confidence'] == max(people[img]['confidence'])]
 
 # COSTANTI
 EFFICIENTPOSE_PATH = '../EfficientPose-master'
