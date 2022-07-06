@@ -12,55 +12,20 @@ import warnings
 warnings.simplefilter("ignore", FutureWarning)
 
 # FUNZIONI
-def model_inference(abs_ds_path, abs_res_path, model):
-    # lista con i nomi delle sotto-cartelle
-    dirs = [ f for f in os.listdir(abs_ds_path) if not os.path.isfile(os.path.join(abs_ds_path,f)) ]
-
-    for d in dirs:
-        dir_path = os.path.join(abs_ds_path,d)
-        
-        # lista con i nomi delle immagini
-        list_of_file = []
-        for file in os.listdir(dir_path):
-            if os.path.isfile(os.path.join(dir_path,file)) and not file.endswith(".csv"):
-                list_of_file.append(f'{dir_path}/{file}')
-        
-        # se il processo non si trova già in EFFICIENTPOSE_PATH viene fatto il cambio di directory
-        try:
-            os.chdir(EFFICIENTPOSE_PATH)
-        except:
-            pass
-
-        for file in list_of_file:
-            os.system(f'python {EFFICIENTPOSE_MAIN} --path="{file}" --framework={FRAMEWORK} --model={model} {OUTPUT}')
-
-        # sposto i risultati in RES_PATH
-        for file in os.listdir(dir_path):
-            if os.path.isfile(os.path.join(dir_path,file)) and (file.endswith(".csv") or "_tracked" in file):
-                os.replace(f'{dir_path}/{file}', f'{abs_res_path}/{model}/{file}')
-
-def infer():
-    # path assoluto della cartella DS_PATH
-    abs_ds_path = os.path.abspath(DS_PATH)
-    abs_res_path = os.path.abspath(RES_PATH)
-    
-    # vengono prodotti i risultati
-    if ANALYZE_ONE_MODEL:
-        model_inference(abs_ds_path, abs_res_path, MODEL)
-
-    else:
-        for m in MODELS:
-            model_inference(abs_ds_path, abs_res_path, m)
-
-
 def detect():
     # Model
     model = torch.hub.load('ultralytics/yolov5', 'yolov5s')  # or yolov5n - yolov5x6, custom
     
     detections = {}
     
+    abs_path_dataset = os.path.abspath(DS_PATH)
     # Images
-    for img in os.listdir(os.path.abspath(DS_PATH)):
+    for img in os.listdir(abs_path_dataset):
+
+        # se img è una cartella allora chiaramente non la analizziamo
+        if not os.path.isfile(os.path.join(abs_path_dataset, img)):
+            continue
+
         # Inference
         results = model(os.path.join(os.path.abspath(DS_PATH), img))
         
@@ -70,6 +35,26 @@ def detect():
         detections[img] = results
         
     return detections
+
+def extract_people_in_images(detections):
+    '''
+    Prende come input le detection fatte da 'detect()'. Poi per ogni immagine determina le bounding box
+    di tutte le persone nell'immagine. Applica infine crop che ritaglia dall'immagine la persona con il
+    grado di confidenza più alto.
+
+    '''
+    # dizionario della forma - (img: crop_persona_con_piu_alta_confidenza)
+    people = {}
+
+    # https://docs.ultralytics.com/tutorials/pytorch-hub/#detailed-example
+    for img in detections.keys():
+        # predictions (pandas)
+        bbox = detections[img].pandas().xyxy[0]  # xyxy=diagonale
+        
+        # vengono considerate solo le persone all'interno dell'immagine
+        people[img] = bbox.loc[bbox['name'] == 'person']
+    
+    crop(people)
 
 def crop(people):
     for img in people.keys():
@@ -83,39 +68,68 @@ def crop(people):
                                         people[img].iloc[0]['xmax'],
                                         people[img].iloc[0]['ymax']))
         
-        cropped_image.save(os.path.join(os.path.abspath(DS_PATH), 'cropped_'+img))
+        cropped_image.save(os.path.join(os.path.abspath(DS_PATH), CROPPED_IMAGES_TAG+img))
+
+def model_inference(abs_ds_path, abs_res_path, model):
+    # lista con i nomi delle immagini
+    list_of_file = []
+    for file in os.listdir(abs_ds_path):
+        # controllo se è un file e se all'interno del nome è presente CROPPED_IMAGES_TAG ('cropped_') segno
+        # che l'immagine è stata ritagliata
+        if os.path.isfile(os.path.join(abs_ds_path, file)) and CROPPED_IMAGES_TAG in file:
+            list_of_file.append(f'{abs_ds_path}/{file}')
+    
+    # se il processo non si trova già in EFFICIENTPOSE_PATH viene fatto il cambio di directory
+    try:
+        os.chdir(EFFICIENTPOSE_PATH)
+    except:
+        pass
+
+    for file in list_of_file:
+        os.system(f'python {EFFICIENTPOSE_MAIN} --path="{file}" --framework={FRAMEWORK} --model={model} {OUTPUT}')
+
+    # sposto i risultati in RES_PATH
+    for file in os.listdir(abs_ds_path):
+        if os.path.isfile(os.path.join(abs_ds_path,file)) and TRACKED_IMAGES_TAG in file:
+            os.replace(f'{abs_ds_path}/{file}', f'{abs_res_path}/{model}/{file}')
+
+def infer():
+    # path assoluto della cartella DS_PATH
+    abs_ds_path = os.path.abspath(DS_PATH)
+    abs_res_path = os.path.abspath(RES_PATH)
+    
+    # vengono prodotti i risultati
+    if ANALYZE_ONE_MODEL:
+        model_inference(abs_ds_path, abs_res_path, MODEL)
+
+    else:
+        for m in MODELS:
+            model_inference(abs_ds_path, abs_res_path, m)
+    
+    # rimuovo i file cropped
+    for file in os.listdir(abs_ds_path):
+        if os.path.isfile(os.path.join(abs_ds_path, file)) and CROPPED_IMAGES_TAG in file:
+            os.remove(f'{abs_ds_path}/{file}')
 
 # COSTANTI
 EFFICIENTPOSE_PATH = '../EfficientPose-master'
 EFFICIENTPOSE_MAIN = 'track.py'
 MODELS = ['RT','I','II','III','IV']
+CROPPED_IMAGES_TAG = 'cropped_'
+TRACKED_IMAGES_TAG = '_tracked'
 
 # VARIABILI
-FRAMEWORK = 'pytorch'
+FRAMEWORK = 'tflite' #'pytorch'
 OUTPUT = '--visualize'
 
 MODEL = MODELS[0]
-ANALYZE_ONE_MODEL = False  # True lavora su un solo modello (MODEL), False su tutti i modelli
+ANALYZE_ONE_MODEL = True  # True lavora su un solo modello (MODEL), False su tutti i modelli
 
 DS_PATH = './DATASET/'
 RES_PATH = './results/'
 THRESHOLD = 0.5
 
 if __name__ == "__main__":
-    detections = detect()
-    
-    # dizionario della forma - (img: crop_persona_con_piu_alta_confidenza)
-    people = {}
-    
-    # https://docs.ultralytics.com/tutorials/pytorch-hub/#detailed-example
-    for img in detections.keys():
-        # predictions (pandas)
-        bbox = detections[img].pandas().xyxy[0]  # xyxy=diagonale
-        
-        # vengono considerate solo le persone all'interno dell'immagine
-        people[img] = bbox.loc[bbox['name'] == 'person']
-    
-    crop(people)
-
+    extract_people_in_images(detect())
     # dopo il crop va fatta l'inferenza
     infer()

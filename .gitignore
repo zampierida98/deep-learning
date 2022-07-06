@@ -38,3 +38,5 @@ TEST_QUALITATIVO/dataset/test1_tracked_RT.mp4
 TEST_QUALITATIVO/dataset/test2_tracked_II.mp4
 TEST_QUALITATIVO/dataset/test2_tracked_RT.mp4
 DETECTOR/yolov5s.pt
+DETECTOR/scene00501.png
+DETECTOR/scene00501.png
