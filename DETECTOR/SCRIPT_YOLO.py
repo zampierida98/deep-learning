@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-
-"""
+'''
 INSERIRE IL SEGUENTE CODICE NELLA ROOT DI: https://github.com/ultralytics/yolov5
 INSERIRE LE IMMAGINI NELLA DIRECTORY: DS_PATH
-"""
+'''
 
 # IMPORT
 from PIL import Image
@@ -11,20 +10,6 @@ import torch
 import os
 import warnings
 warnings.simplefilter("ignore", FutureWarning)
-
-# COSTANTI
-DS_PATH = './DATASET/'
-THRESHOLD = 0.5
-
-
-RES_PATH = './results/'
-EFFICIENTPOSE_PATH = '../EfficientPose-master'
-EFFICIENTPOSE_MAIN = 'track.py'
-MODELS = ['RT','I','II','III','IV']
-FRAMEWORK = 'pytorch'
-OUTPUT = '--visualize'
-MODEL = MODELS[4]
-ANALYZE_ONE_MODEL = False  # True lavora su un solo modello (MODEL), False su tutti i modelli
 
 # FUNZIONI
 def model_inference(abs_ds_path, abs_res_path, model):
@@ -47,7 +32,7 @@ def model_inference(abs_ds_path, abs_res_path, model):
             pass
 
         for file in list_of_file:
-            os.system(f'python3.7 {EFFICIENTPOSE_MAIN} --path="{file}" --framework={FRAMEWORK} --model={model} {OUTPUT}')
+            os.system(f'python {EFFICIENTPOSE_MAIN} --path="{file}" --framework={FRAMEWORK} --model={model} {OUTPUT}')
 
         # sposto i risultati in RES_PATH
         for file in os.listdir(dir_path):
@@ -88,8 +73,9 @@ def detect():
 
 def crop(people):
     for img in people.keys():
-        #people[img] = people[img].loc[people[img]['confidence'] > THRESHOLD]
+        # VIENE CONSIDERATA UNA SOLA PERSONA (PER ADESSO). QUELLA CHE HA LA CONFIDENZA PIU' ALTA
         people[img] = people[img].loc[people[img]['confidence'] == max(people[img]['confidence'])]
+        #people[img] = people[img].loc[people[img]['confidence'] > THRESHOLD]
         
         image_obj = Image.open(os.path.join(os.path.abspath(DS_PATH), img))
         cropped_image = image_obj.crop((people[img].iloc[0]['xmin'],
@@ -99,12 +85,26 @@ def crop(people):
         
         cropped_image.save(os.path.join(os.path.abspath(DS_PATH), 'cropped_'+img))
 
+# COSTANTI
+EFFICIENTPOSE_PATH = '../EfficientPose-master'
+EFFICIENTPOSE_MAIN = 'track.py'
+MODELS = ['RT','I','II','III','IV']
+
+# VARIABILI
+FRAMEWORK = 'pytorch'
+OUTPUT = '--visualize'
+
+MODEL = MODELS[0]
+ANALYZE_ONE_MODEL = False  # True lavora su un solo modello (MODEL), False su tutti i modelli
+
+DS_PATH = './DATASET/'
+RES_PATH = './results/'
+THRESHOLD = 0.5
 
 if __name__ == "__main__":
-    infer()
-    """
     detections = detect()
     
+    # dizionario della forma - (img: crop_persona_con_piu_alta_confidenza)
     people = {}
     
     # https://docs.ultralytics.com/tutorials/pytorch-hub/#detailed-example
@@ -112,7 +112,10 @@ if __name__ == "__main__":
         # predictions (pandas)
         bbox = detections[img].pandas().xyxy[0]  # xyxy=diagonale
         
+        # vengono considerate solo le persone all'interno dell'immagine
         people[img] = bbox.loc[bbox['name'] == 'person']
     
     crop(people)
-    """
+
+    # dopo il crop va fatta l'inferenza
+    infer()
