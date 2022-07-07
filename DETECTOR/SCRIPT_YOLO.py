@@ -7,7 +7,8 @@ INSERIRE LE IMMAGINI NELLA DIRECTORY: DS_PATH
 # IMPORT
 from PIL import Image
 import torch
-import torchvision
+#import torchvision
+import cv2
 import os
 import warnings
 warnings.simplefilter("ignore", FutureWarning)
@@ -57,8 +58,18 @@ def infer():
 
 def video_detection(video, model):
     res = {}
-    for ind, frame in enumerate(video):
-        res[ind] = model(frame['data']).print()
+    #for ind, frame in enumerate(video):
+        #res[ind] = model(frame['data']).print()
+        
+    vidcap = cv2.VideoCapture(video)
+    success, image = vidcap.read()
+    count = 0
+    while success:
+        res[count] = model(image)
+        res[count].print()
+        
+        success, image = vidcap.read()
+        count += 1
     
     return res
 
@@ -87,7 +98,8 @@ def detect():
             detections[img] = results
         else:
             # @Problema: Not compiled with video_reader support, to enable video_reader support, please install ffmpeg (version 4.2 is currently supported) and build torchvision from source. 
-            video_detections[img] = video_detection(torchvision.io.VideoReader(os.path.join(abs_path_dataset, img)), model)
+            #video_detections[img] = video_detection(torchvision.io.VideoReader(os.path.join(abs_path_dataset, img)), model)
+            video_detections[img] = video_detection(os.path.join(abs_path_dataset, img), model)
 
     return detections, video_detections
 
@@ -122,12 +134,13 @@ def extract_people_in_videos(detections):
     people = {}
 
     for video in detections:
-        for frame in video.keys():
+        people[video] = {}
+        for frame in detections[video].keys():
             # predictions (pandas)
             bbox = detections[video][frame].pandas().xyxy[0]  # xyxy=diagonale
             
             # vengono considerate solo le persone all'interno dell'immagine
-            people[frame] = bbox.loc[bbox['name'] == 'person']
+            people[video][frame] = bbox.loc[bbox['name'] == 'person']
 
         # qua bisogna capire come fare
         video_crop(people)
@@ -147,10 +160,28 @@ def crop(people):
         cropped_image.save(os.path.join(os.path.abspath(DS_PATH), CROPPED_IMAGES_TAG+img))
 
 def video_crop(people):
-    for img in people.keys():
-        # VIENE CONSIDERATA UNA SOLA PERSONA (PER ADESSO). QUELLA CHE HA LA CONFIDENZA PIU' ALTA
-        people[img] = people[img].loc[people[img]['confidence'] == max(people[img]['confidence'])]
+    abs_path_dataset = os.path.abspath(DS_PATH)
+    for video in people:
+        vidcap = cv2.VideoCapture(os.path.join(abs_path_dataset, video))
+        success, image = vidcap.read()
+        count = 0
+        while success:
+            # VIENE CONSIDERATA UNA SOLA PERSONA (PER ADESSO). QUELLA CHE HA LA CONFIDENZA PIU' ALTA
+            people[video][count] = people[video][count].loc[people[video][count]['confidence'] == max(people[video][count]['confidence'])]
 
+            imageRGB = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            image_obj = Image.fromarray(imageRGB)
+            cropped_image = image_obj.crop((people[video][count].iloc[0]['xmin'],
+                                            people[video][count].iloc[0]['ymin'],
+                                            people[video][count].iloc[0]['xmax'],
+                                            people[video][count].iloc[0]['ymax']))
+            
+            cropped_image.save(os.path.join(abs_path_dataset, "CROP", f"{video}_cropped_frame{count}.png"))
+            
+            success, image = vidcap.read()
+            count += 1
+            
+            
 # COSTANTI
 EFFICIENTPOSE_PATH = '../EfficientPose-master'
 EFFICIENTPOSE_MAIN = 'track.py'
@@ -173,8 +204,8 @@ VIDEO_EXTENTION = '.mp' #mp3/4
 
 if __name__ == "__main__":
     imgs_det, videos_det = detect()
-    extract_people_in_images(imgs_det)
-    #extract_people_in_videos(videos_det)
+    #extract_people_in_images(imgs_det)
+    extract_people_in_videos(videos_det)
 
     # dopo il crop va fatta l'inferenza
-    infer()
+    #infer()
