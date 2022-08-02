@@ -234,7 +234,7 @@ CROPPED_IMAGES_TAG = 'cropped_'
 TRACKED_IMAGES_TAG = '_tracked'
 
 # VARIABILI
-FRAMEWORK = 'tflite' #'pytorch'
+FRAMEWORK = 'pytorch' #'tflite'
 OUTPUT = '--visualize'
 
 MODEL = MODELS[0]
@@ -249,8 +249,10 @@ VIDEO_EXTENTION = '.mp' #mp3/4
 
 if __name__ == "__main__":
     imgs_det, videos_det = detect()
-    extract_people_in_images(imgs_det)
+    
+    #extract_people_in_images(imgs_det)
     
     extract_people_in_videos(videos_det)
+    
     # dopo il crop va fatta l'inferenza
     infer()
