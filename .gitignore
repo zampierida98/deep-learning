@@ -20,10 +20,10 @@
 /HRNet/MPII/__pycache__
 /HRNet/COCO/__pycache__
 
-/DETECTOR/DATASET_qualitativo/*.jpg
-/DETECTOR/DATASET_quantitavio/*.jpg
+/DETECTOR/DATASET_qualitativo/
 /DETECTOR/DATASET_qualitativo/CROP/
-/DETECTOR/DATASET_quantitavio/CROP/
+/DETECTOR/DATASET_quantitativo/
+/DETECTOR/DATASET_quantitativo/CROP/
 /DETECTOR/results
 /DETECTOR/yolov5s.pt
 /DETECTOR/scene00501.png

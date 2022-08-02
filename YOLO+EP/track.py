@@ -203,7 +203,7 @@ def analyze_camera(model, framework, resolution, lite):
     
     return coordinates
 
-def analyze_image(file_path, model, framework, resolution, lite):
+def analyze_image_original(file_path, model, framework, resolution, lite):
     """
     Predict pose coordinates on supplied image.
     
@@ -359,7 +359,7 @@ def display_segments(image, image_draw, coordinates, origin, image_height=1024, 
     return image
 
 """
-NUOVA FUNZIONE PER L'ANALISI DI UN VIDEO
+NUOVe FUNZIONE PER L'ANALISI VIDEO E FOTO
 
 TODO: rispetto all'originale non fa uso dei batch
 """
@@ -450,6 +450,88 @@ def analyze_video(file_path, model, framework, resolution, lite):
     writer.close()
 
     return coordinates[:num_video_frames]
+
+def analyze_image(file_path, model, framework, resolution, lite):
+    """
+    Predict pose coordinates on supplied image.
+    
+    Args:
+        file_path: path
+            System path of image to analyze
+        model: deep learning model
+            Initialized EfficientPose model to utilize (RT, I, II, III, IV, RT_Lite, I_Lite or II_Lite)
+        framework: string
+            Deep learning framework to use (Keras, TensorFlow, TensorFlow Lite or PyTorch)
+        resolution: int
+            Input height and width of model to utilize
+        lite: boolean
+            Defines if EfficientPose Lite model is used
+            
+    Returns:
+        Predicted pose coordinates in the supplied image.
+    """
+    
+    # Load image
+    from PIL import Image, ImageDraw
+    start_time = time.time()
+    original_image = Image.open(file_path)
+    image = np.array(original_image)
+    
+    # Detection: determino la posizione delle persone all'interno dell'immagine
+    detections = yolo(image)
+    bbox = detections.pandas().xyxy[0]
+    bbox = bbox.loc[bbox['name'] == 'person']
+    coordinates = [] # inizializzo a vuoto le coordinate delle persone
+
+    # Annotazione sulla img originale
+    image_draw = ImageDraw.Draw(original_image) # immagine originale su cui fare le modifiche
+
+    # per ogni persona riconosciuta dal detector
+    for person in range(len(bbox)):
+        # Crop a partire dall'immagin originale
+        cropped_image = original_image.crop((bbox.iloc[person]['xmin'],
+                                        bbox.iloc[person]['ymin'],
+                                        bbox.iloc[person]['xmax'],
+                                        bbox.iloc[person]['ymax']))
+        
+        image = np.array(cropped_image)  # formato numpy dell'immagine ritagliata sulla persona
+
+        # Analisi sulla persona ritagliata + dimensioni dell'immagine
+        image_height, image_width = image.shape[:2]
+        batch = np.expand_dims(image, axis=0)
+
+        # Preprocess sulla persona ritagliata
+        batch = helpers.preprocess(batch, resolution, lite)
+    
+        # Inference sulla persona ritagliata
+        batch_outputs = infer(batch, model, lite, framework)
+
+        # Extract coordinates sulla persona ritagliata
+        batch_coordinates = [helpers.extract_coordinates(batch_outputs[0,...], image_height, image_width)]
+        
+        # aggiungo le coordinate della persona ritagliata a coordinates che contiene le coords di tutte le persone
+        # nell'immagine
+        coordinates += batch_coordinates
+
+        # lato più lungo ottenuto come la max fra la larghezza e altezza dell'immagine ritagliata
+        image_side = max(image_width, image_height)
+
+        # le coordinate di una persona soltanto
+        image_coordinates = coordinates[person]
+
+        # vado ad annotare sull'immagine originale
+        display_body_parts(None, image_draw, image_coordinates, origin=(bbox.iloc[person]['xmin'],bbox.iloc[person]['ymin']), image_height=image_height, image_width=image_width, marker_radius=int(image_side/150))
+        display_segments(None, image_draw, image_coordinates, origin=(bbox.iloc[person]['xmin'],bbox.iloc[person]['ymin']), image_height=image_height, image_width=image_width, segment_width=int(image_side/100))
+
+    # Save annotated image
+    original_image.save(normpath(file_path.split('.')[0] + f'_tracked.png'))
+        
+    # Print processing time
+    print('\n##########################################################################################################')
+    print('Image processed in {0} seconds'.format('%.3f' % (time.time() - start_time)))
+    print('##########################################################################################################\n')
+        
+    return image_coordinates
 
 
 def analyze(video, file_path, model, framework, resolution, lite):
