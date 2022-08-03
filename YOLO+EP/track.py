@@ -482,6 +482,7 @@ def analyze_image(file_path, model, framework, resolution, lite):
     bbox = detections.pandas().xyxy[0]
     bbox = bbox.loc[bbox['name'] == 'person']
     coordinates = [] # inizializzo a vuoto le coordinate delle persone
+    image_coordinates = []
 
     # Annotazione sulla img originale
     image_draw = ImageDraw.Draw(original_image) # immagine originale su cui fare le modifiche

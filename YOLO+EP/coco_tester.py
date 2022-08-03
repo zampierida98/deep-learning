@@ -78,20 +78,18 @@ def search_person_image(annotations, n_of_img, num_of_people):
 # COSTANTI
 ANNOTATIONS_PATH = './coco_files/annotations/person_keypoints_val2017.json'
 DS_PATH = './coco_files/dataset/'
-EFFICIENTPOSE_PATH = './'
+EFFICIENTPOSE_PATH = './' # '../EfficientPose-master' # 
 EFFICIENTPOSE_MAIN = 'track.py'
 MODELs = ['RT','I','II', 'III', 'IV']
 
 # VARIABILI
-FRAMEWORK = 'tflite' #, 'keras' #"torch"# "tf", #
-MODEL = MODELs[0]
-NUMBER_OF_IMAGES = 2
-TAU_FOR_PRETTIFY = 0.5
-
-NUM_OF_PEOPLE = 2
+FRAMEWORK = "torch" #'tflite', 'keras' ## "tf", #
+MODEL = MODELs[4]
+NUMBER_OF_IMAGES = 30
+NUM_OF_PEOPLE = 3 # 1 # 2 # 
 
 # True lavora su un solo modello (MODEL), False crea un plot che compara i diversi modelli
-ANALYZE_ONE_MODEL = True
+ANALYZE_ONE_MODEL = False
 
 # MAIN
 if __name__ == "__main__":
