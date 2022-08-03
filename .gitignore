@@ -6,6 +6,7 @@
 
 /YOLO+EP/models
 /YOLO+EP/utils/test1
+/YOLO+EP/coco_files/dataset
 /YOLO+EP/utils/__pycache__
 /YOLO+EP/yolov5s.pt
 
@@ -53,3 +54,4 @@ HRNet-master/pytorch/pose_coco/pose_resnet_152_256x192.pth
 HRNet-master/pytorch/pose_coco/pose_resnet_152_384x288.pth
 HRNet-master/pytorch/pose_mpii/pose_resnet_101_256x256.pth
 HRNet-master/pytorch/pose_mpii/pose_resnet_152_256x256.pth
+YOLO+EP/coco_files/annotations/person_keypoints_train2017.json
