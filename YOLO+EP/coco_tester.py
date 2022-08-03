@@ -12,6 +12,10 @@ warnings.simplefilter("ignore", FutureWarning)
 
 # FUNZIONI
 def model_inference(abs_ds_path, model):
+    import subprocess
+    import re
+    import sys
+
     list_of_file = []
     # popolo list_of_file prendendo solo i file jpg
     for file in os.listdir(abs_ds_path):
@@ -24,9 +28,20 @@ def model_inference(abs_ds_path, model):
     except:
         pass
 
+    times = []
     # per ogni file viene creata una immagine contenente la stima della posa
     for file in list_of_file:
-        os.system(f'python {EFFICIENTPOSE_MAIN} --model={model} --path="{file}" --framework={FRAMEWORK}')
+        # recuperare l'output del sottoprocesso come stringa
+        stdout = subprocess.check_output(f'python {EFFICIENTPOSE_MAIN} --model={model} --path="{file}" --framework={FRAMEWORK}', shell=True).decode(sys.stdout.encoding)
+        # ricerco questo pattern dentro la stringa
+        res = re.search(r'Image processed in [-+]?(?:\d*\.\d+|\d+) seconds', stdout).group(0)
+        
+        print(f'\n{res}\n')
+
+        # estraggo il numero float e lo aggiungo a times
+        times.append(float(re.findall(r'[-+]?(?:\d*\.\d+|\d+)', res)[0]))
+    
+    print(f"\nTempo medio di analisi è {sum(times) / len(times)}")
 
 def move_inference_in_model_dir(abs_ds_path, model):
     # errore se la dir esiste già
@@ -96,8 +111,6 @@ if __name__ == "__main__":
     
     # carico le annotazioni di interesse cioè quelle che rispettano i requisiti di search_person_image
     annotations = coco.loadAnns(ids=coco.getAnnIds(imgIds=img_ids))
-    
-    print(len(annotations))
 
     # path assoluto della cartella del dataset
     abs_ds_path = os.path.abspath(DS_PATH)
