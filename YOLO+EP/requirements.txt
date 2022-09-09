@@ -1,7 +1,0 @@
-tensorflow==2.5.2
-pymediainfo==5.0.3
-torch==1.8.1
-torchvision>=0.8.1,!=0.13.0
-scikit-image==0.17.2
-sk-video==1.1.10
-opencv-python
